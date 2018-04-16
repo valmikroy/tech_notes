@@ -24,7 +24,7 @@ efficiency, with smaller values being more efficient and thus "better."
 - `-D <interval,units>` this is iperf style demo mode which takes intervals
 - `-f G|M|K|g|m|k|x` output units 
 - `-F <fillfile>' fillfile , file content will fill up buffer
-- `-H <optionspec>'` give remote host name along with options like `-H linger,4` which will enable `linger` option with `ipv4`.
+- `-H <optionspec>'` give remote host name along with options like `-H linger,4` which will enable `linger` option with `ipv4`. Similar option availble for local client host with `-L`.
 - `-I <optionspec>' confidence level
 ```
           -I 99,5
@@ -60,3 +60,11 @@ In the example above we see that netperf did not meet the desired confidence int
 
 
 - `-i <sizespec>` This option enables the calculation of confidence intervals and sets the minimum and maximum number of iterations to run in attempting to achieve the desired confidence interval.
+
+- `-j` This option instructs netperf to keep additional timing statistics when explicitly running an Omni Tests.
+
+- `-o` and `-O` are offsets in buffersizes in local and remote systems.
+- `-P` boolean flag to display test banner.
+- 
+
+
