@@ -67,7 +67,7 @@ In the example above we see that netperf did not meet the desired confidence int
 - `-P` boolean flag to display test banner.
 
 
-Above all are global options `netperf <global> -- <test-specific>`
+Above all are global options and below are test specific options , `netperf <global> -- <test-specific>`
 
 #### Test specific 
 ##### _RR
