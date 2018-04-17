@@ -66,6 +66,8 @@ In the example above we see that netperf did not meet the desired confidence int
 - `-o` and `-O` are offsets in buffersizes in local and remote systems.
 - `-P` boolean flag to display test banner.
 
-for all `_RR` type of tests, there is options to tune send and receive bufffers on local and remote systems with `-s` and `-S` respectively. How that affects `-a` and `-A` options which I could not find. 
+for all `_RR` type of tests, there is options to tune send and receive bufffers on local and remote systems with `-s` and `-S` respectively. How that affects `-a` and `-A` options ?
+
+`_RR` tests also has `-r` option which could determine request and response sizes.
 
 
