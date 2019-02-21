@@ -10,14 +10,16 @@ All four timing numbers are repsented in terms of cycles and you can calculate a
 
 Memory chips are arrange in form of rows and coloumn, it needs 
 
-####CL - CAS Latency
+#### CL - CAS Latency
 
  Cycles required for first bit to read when memory row is already open.
 
-####tRCD - Row address to Column address Delay
+#### tRCD - Row address to Column address Delay
 
 Minimum clock cycle required to open 
 
+#### Memory Bandwidth 
+`Theorotical BW calcualtion = Speed  GT/s * 8 bytes per channel * Number of Channels * Number of Sockets`
 
 
  
