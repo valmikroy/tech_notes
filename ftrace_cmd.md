@@ -236,7 +236,10 @@ cpus=2
 
 
 
+You can also have function timing graph of an event inside given function like 
 
+
+`trace-cmd record -p function_graph -e irq_handler_entry  -l do_IRQ sleep 10` will create a graph for `irq_handler_entry` events called inside `do_IRQ` function.
 
 
 
