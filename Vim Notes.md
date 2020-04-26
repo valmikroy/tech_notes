@@ -1,8 +1,6 @@
 # Vim Notes
 
-Set of commands used in vim by me
-
-
+Set of commands used in vim
 
 ### NerdTree 
 
@@ -43,6 +41,7 @@ zR and zM              : open and close all folds
 ,w         : toggle tag bar
 ,ww        : save existing file
 ,tt        : run go test 
+,g         : focus 
 ```
 
 
