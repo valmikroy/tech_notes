@@ -33,6 +33,12 @@ zR and zM              : open and close all folds
 ```
 
 
+### Configuration 
+```
+,r  re-read the init.vim
+,ec edit init.vim in vertical split
+```
+
 
 ### vim-go
 
