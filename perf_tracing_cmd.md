@@ -46,7 +46,20 @@ I am using ubuntu based system on which `perf` comes as a part of package, in re
   ```
 
   
+- install BCC tools in the mix 
+```
+# ubuntu focal 
+sudo apt-get install -y bpfcc-tools
 
+# other ubuntus 
+
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 4052245BD4284CDD
+echo "deb https://repo.iovisor.org/apt/$(lsb_release -cs) $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/iovisor.list
+sudo apt-get update
+sudo apt-get install bcc-tools libbcc-examples linux-headers-$(uname -r)
+
+
+```
 
 
 ### Analysis 
