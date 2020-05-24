@@ -177,6 +177,96 @@ $  perf probe -L tcp_sendmsg
 ```
 
 
+Some interesting commands 
+
+#### CPU cache hit rate 
+
+```
+$ sudo llcstat-bpfcc | egrep -e 'xlinpack|MISS'
+PID      NAME             CPU     REFERENCE         MISS    HIT%
+25368    xlinpack_xeon64  7          723800       446300  38.34%
+25362    xlinpack_xeon64  1          769300       131500  82.91%
+25376    xlinpack_xeon64  15         528600            0 100.00%
+25367    xlinpack_xeon64  6          730600          200  99.97%
+25363    xlinpack_xeon64  2           68400       394800   0.00%
+25364    xlinpack_xeon64  3          773900       145700  81.17%
+25365    xlinpack_xeon64  4         1120900       147500  86.84%
+25373    xlinpack_xeon64  12        1006900          700  99.93%
+25377    xlinpack_xeon64  16         737100            0 100.00%
+25366    xlinpack_xeon64  5           63400       399600   0.00%
+25371    xlinpack_xeon64  10         703600       148400  78.91%
+25372    xlinpack_xeon64  11         657000          500  99.92%
+25374    xlinpack_xeon64  13         632900            0 100.00%
+25369    xlinpack_xeon64  8         1052900         1700  99.84%
+25361    xlinpack_xeon64  18        1339700         1700  99.87%
+25378    xlinpack_xeon64  17         546400            0 100.00%
+25370    xlinpack_xeon64  9          796800       149000  81.30%
+25375    xlinpack_xeon64  14         556000       148300  73.33%
+25376    xlinpack_xeon64  33          35700          100  99.72%
+```
+
+
+
+#### Instructions per cycle 
+
+Simple CPUs can process single instruction per cycle and if it is taking multiple cycles then is blocked on some external resources. Todays multiscalar processors can do more than 1 instruction per cycle.  This can be observed as a part of PMU perf stat 
+
+```
+$ sudo perf stat -C 10   -- sleep 5
+
+ Performance counter stats for 'CPU(s) 10':
+
+           5001.57 msec cpu-clock                 #    1.000 CPUs utilized
+                 2      context-switches          #    0.000 K/sec
+                 0      cpu-migrations            #    0.000 K/sec
+                 0      page-faults               #    0.000 K/sec
+       13579218554      cycles                    #    2.715 GHz
+       32896171252      instructions              #    2.42  insn per cycle
+         246551416      branches                  #   49.295 M/sec
+            367615      branch-misses             #    0.15% of all branches
+
+       5.001763686 seconds time elapsed
+
+```
+
+
+
+Running this stat with NOP cycles, you can find out max this CPU can do 
+
+```
+$ sudo perf stat -ddd ./noploop
+
+ Performance counter stats for './noploop':
+
+       1987.561576      task-clock (msec)         #    1.000 CPUs utilized
+                 2      context-switches          #    0.001 K/sec
+                 0      cpu-migrations            #    0.000 K/sec
+                39      page-faults               #    0.020 K/sec
+     5,037,506,873      cycles                    #    2.535 GHz                      (30.71%)
+    20,043,572,014      instructions              #    3.98  insn per cycle           (38.56%)
+        10,600,102      branches                  #    5.333 M/sec                    (38.76%)
+            31,028      branch-misses             #    0.29% of all branches          (38.82%)
+        21,060,842      L1-dcache-loads           #   10.596 M/sec                    (38.82%)
+            37,500      L1-dcache-load-misses     #    0.18% of all L1-dcache hits    (38.70%)
+             7,415      LLC-loads                 #    0.004 M/sec                    (30.65%)
+             4,361      LLC-load-misses           #   58.81% of all LL-cache hits     (30.59%)
+   <not supported>      L1-icache-loads
+            42,357      L1-icache-load-misses                                         (30.59%)
+        20,842,244      dTLB-loads                #   10.486 M/sec                    (30.59%)
+             1,295      dTLB-load-misses          #    0.01% of all dTLB cache hits   (30.59%)
+               562      iTLB-loads                #    0.283 K/sec                    (30.59%)
+                 0      iTLB-load-misses          #    0.00% of all iTLB cache hits   (30.59%)
+   <not supported>      L1-dcache-prefetches
+   <not supported>      L1-dcache-prefetch-misses
+
+       1.988068021 seconds time elapsed
+```
+
+And then push your processor to achieve that
+
+
+
+
 
 
 
