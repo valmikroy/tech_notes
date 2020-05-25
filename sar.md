@@ -57,7 +57,8 @@ $ awk 'NF > 7 { if ($1 == "task") { if (h == 0) { print; h=1 } } else { print } 
  S          loop3   428    127770.543906       520   100         0.000000         8.003048         0.000000 0 0 /
 ```
 
-
+Rough diagramatic representation on how kernel space proc scheduling happens 
+![linux_prod_sched](images/linux_proc_sched.png)
 
 
 
