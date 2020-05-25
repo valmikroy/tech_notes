@@ -265,7 +265,7 @@ $ sudo perf stat -ddd ./noploop
 And then push your processor to achieve that
 
 
-#### Snoop open() syscall
+#### Snoop syscall
 Here is easy of way to snoop on `open()` syscall in realtime
 
 ```
@@ -273,8 +273,13 @@ sudo perf probe --add 'do_sys_open filename:string'
 sudo perf record --no-buffering -e probe:do_sys_open -o - -a | PAGER=cat perf script -i -
 sudo perf probe --del do_sys_open
 ```
+So here is the `exec()` syscall to monitor small lived processes 
 
-
+```
+perf probe --add 'do_execve +0(+0(%si)):string +0(+8(%si)):string +0(+16(%si)):string +0(+24(%si)):string'
+perf record --no-buffering -e probe:do_execve -a -o - | PAGER="cat -v" stdbuf -oL perf script -i -
+perf probe --del do_execve
+```
 
 
 
