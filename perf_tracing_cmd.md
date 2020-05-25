@@ -265,6 +265,15 @@ $ sudo perf stat -ddd ./noploop
 And then push your processor to achieve that
 
 
+#### Snoop open() syscall
+Here is easy of way to snoop on `open()` syscall in realtime
+
+```
+sudo perf probe --add 'do_sys_open filename:string'
+sudo perf record --no-buffering -e probe:do_sys_open -o - -a | PAGER=cat perf script -i -
+sudo perf probe --del do_sys_open
+```
+
 
 
 
