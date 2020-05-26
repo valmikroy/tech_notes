@@ -237,7 +237,77 @@ Above digram in certain extent explained in following white boarding session
 Before exploring each network protocols, make sure that you remember these basic OSI layers
 ![os_model](images/network_OS_layers.png)
 
+
+Network connection handling is done by following system calls
+
+- Create a socket to get fd 
+
+  ```
+  #include        <sys/types.h>
+  #include        <sys/socket.h>
+  
+  int socket(int family, int type, int protocol);
+  
+  The family is one of
+  	AF_UNIX		-- Unix internal protocols
+  	AF_INET		-- Internet protocols
+  	AF_NS		-- Xerox NS Protocols
+  	AF_IMPLINK	-- IMP link layer
+  The AF_ prefix stands for "address family." In the first project, we are going to use AF_INET.
+  
+  The socket type is one of the following:
+  	SOCK_STREAM	stream socket
+  	SOCK_DGRAM	datagram socket
+  	SOCK_RAW	raw socket
+  	SOCK_SEQPACKET	sequenced packet socket
+  	SOCK_RDM	reliably delivered message socket (not implemented yet)
+  ```
+
+- Then Bind it to IP Port tuples defined in `sockaddr` structure 
+
+  ```
+  int bind(int sockfd, struct sockaddr *myaddr, int addrlen);
+  ```
+
+- Connet to other end of the server , this is a part of active open where other end is defined by `sockaddr` structure.
+
+  ```
+  int connect(int sockfd, struct sockaddr *servaddr, int addrlen);
+  ```
+
+- Or Listen as a server and allow others to connect 
+
+  ```
+  int listen(int sockfd, int backlog);
+  ```
+
+- If you are a server in listening state then you can accept the connection 
+
+  ```
+  int accept(int sockfd, struct sockaddr *peer, int *addrlen);
+  ```
+
+- Data transfer can be done with following 
+
+  ```
+  int send(int sockfd, char *buff, int nbytes, int flags);
+  
+  int sendto(int sockfd, char *buff, int nbytes, int flags, struct sockaddr *to, int addrlen);
+  
+  int recv(int sockfd, char *buff, int nbytes, int flags);
+  
+  int recvfrom(int sockfd, char *buff, int nbytes, int flags, struct sockaddr *from, int *addrlen);
+  ```
+
+- Final close on the socket 
+
+  ```
+  int close(int fd);
+  ```
+
+  
 This section also combines notes from TCP/IP illustrated 
+
 
 
 
