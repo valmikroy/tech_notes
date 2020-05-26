@@ -388,3 +388,16 @@ Incoming connections
 - `net.core.somaxconn` keeps queue for 3-way handshake completed connections
 
 
+
+TCP retrasmissions 
+
+- Retrasmissions happens 
+  - due to ACK timeout 
+  - due to occurance of duplicate ACKs exceeding `dupthresh`, this is called fast retransmission.
+-  This happens in exponential back off fashion
+- Retransmission has two configuratble params 
+  - R1 - `tcp_retries1`  this indicates number of retires before TCP will make to resend a segment before passing "negative advice" to IP layer to change routes.
+  - R2 - `tcp_retries2` this indicates the point at which TCP should abandon the connection.
+  - There are separate `syn` and `synack` retries settings.
+
+
