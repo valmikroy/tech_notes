@@ -217,3 +217,7 @@ Kbpgtbl - kernel page table size
 
 Kbnonpg - Amount of non-file backed pages in kilobytes mapped into userspace page tables. 
  
+Above scenario in sar outputs was happening due watermark exhaustion, 
+![vm_watermark](images/vm_watermarks.png)
+
+
