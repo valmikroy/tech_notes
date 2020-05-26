@@ -236,3 +236,26 @@ Above digram in certain extent explained in following white boarding session
 ## Network
 Before exploring each network protocols, make sure that you remember these basic OSI layers
 ![os_model](images/network_OS_layers.png)
+
+This section also combines notes from TCP/IP illustrated 
+
+
+
+### DNS
+
+- DNS query is either UDP or TCP based depedning on the response size.
+- `.` in the end indicates that name is complete and nothing more need to be appended. It is max 255 chars availble in the FQDN and 63 max chars per label.
+- DNS does various kind of caching which can be controlled with TTL, it can also do negative caching means caching of the unsuccessful FQDN resolution. Some of the local caching services like NSCD (nssswitch.conf) can be used to improve performance.
+
+Here are two DNS query types
+![DNS query types](images/dns_query_types.png)
+
+
+### DHCP
+
+- DHCP is UDP/IP based protocol which helps to maintain IP address assignements are related configurations. 
+- DHCP goes through following stages
+  - DHCPDISCOVER or DHCPREQUEST sent from address `0.0.0.0` port `68` to the limited broadcast address `255.255.255.255 ` port `67` 
+  - Above request get responses in the form of DHCPOFFER.
+  - Client selects one of the offer and does DHCPREQUEST which get acknoledged by DHCPACK with delivery of IP and related configuration items.
+- DHCP leases are something created after above offering which are stored on the disk. 
