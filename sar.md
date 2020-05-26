@@ -232,3 +232,7 @@ Linux memory page life cycle is defined in following diagram
 Above digram in certain extent explained in following white boarding session 
 ![page_life_cycle_explained](images/page_lifecycle_explained.png)
 
+
+## Network
+Before exploring each network protocols, make sure that you remember these basic OSI layers
+![os_model](images/network_OS_layers.png)
