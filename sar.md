@@ -220,4 +220,9 @@ Kbnonpg - Amount of non-file backed pages in kilobytes mapped into userspace pag
 Above scenario in sar outputs was happening due watermark exhaustion, 
 ![vm_watermark](images/vm_watermarks.png)
 
+Here is a white boarding session where how linux kernel maps its physical pages to various data structures.
+![kernel_datastruct](images/phy_mem_to_vm_mem_mapping.png)
+
+And here is mapping of VM process space to physical space
+![proc_vm_to_phy](images/phy_mem_to_vm_mem_mapping_2.png)
 
