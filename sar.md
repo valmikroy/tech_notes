@@ -226,3 +226,6 @@ Here is a white boarding session where how linux kernel maps its physical pages 
 And here is mapping of VM process space to physical space
 ![proc_vm_to_phy](images/phy_mem_to_vm_mem_mapping_2.png)
 
+Linux memory page life cycle is defined in following diagram 
+![page_life_cycle](images/linux_mem_page_lifecycle.png)
+
