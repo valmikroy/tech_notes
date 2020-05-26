@@ -401,3 +401,20 @@ TCP retrasmissions
   - There are separate `syn` and `synack` retries settings.
 
 
+TCP data flow and window management 
+
+- over ssh each keystroke generates new TCP packet and `PSH` flag set on it to let other side know that buffer on sender side is empty.
+- Delayed ACKs help to piggy back retrasmissions.
+- Nagle avoids congestion due to tiny packets by creating a rule that small segments can not be sent until all outstanding data is acknowledged. It creates stop n wait behaviour.
+- Nagle makes sender to wait one RTT before sending which increases overall time for completion but you can increase size of each packet.
+- Delayed ACK and Nagle creates transmissions idle states because both sides are waiting other side to respond which eventually get removed due to delay ack time expiration. `TCP_NODELAY` disables Nagle.
+
+
+
+Window size indicates how much data reciver is ready to accept from sender.
+
+- Window size determined by reciever by looking at empty TCP recieve buffer.
+- sometimes window size set to zero due to slow reciever to stop any more data send. There is time based window probe happens from sender side to know if window got opened or not.
+- Window size field is offset relative to ACK no. 
+
+
