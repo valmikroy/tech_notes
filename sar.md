@@ -208,8 +208,12 @@ Average:         0.00      0.00
 01:15:01 PM  10636404  55293304     83.87      5028  19068160  55459132     75.02  34225696  18533624       404  33683420   1281744     50864    118152         0
 Average:     17934645  47995063     72.80      5028  24888771  55471470     75.03  21092870  24263861       563  20460698   1425706     38693    116688         0
 ```
+
 KbSlab - slab data structure
+
 kbstack - stack structure in kernel
+
 Kbpgtbl - kernel page table size 
+
 Kbnonpg - Amount of non-file backed pages in kilobytes mapped into userspace page tables. 
  
