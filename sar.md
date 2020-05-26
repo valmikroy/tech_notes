@@ -301,3 +301,20 @@ TCP does path MTU discovery based on ICMP reponse like "Destination Unreachable"
 Here is TCP state diagram 
 ![TCP states](images/TCP_state_diagram.png)
 
+
+TIME_WAIT state 
+
+- 2MSL - Maximum segment lifetime , in linux defined by `net.ipv4.tcp_fin_timeout` arbiterily setup for  1min.
+- TIME_WAIT state only happens in Active close when after sending of the last ACK to make sure there are not steal segments lurking around.
+- This make sures last ACK reches to the passive end or it will resend the FIN.
+- SO_REUSEADDR is using timestamp and seqence number combination to figure out steal segments.
+- There is something called Quiet time after host crash/reboot which is set to MSL.
+
+
+
+Incoming connections 
+
+- `tcp_max_syn_backlog` keeps queue for SYN_RCVD connections 
+- `net.core.somaxconn` keeps queue for 3-way handshake completed connections
+
+
