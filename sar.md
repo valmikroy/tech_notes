@@ -280,3 +280,24 @@ Here are two DNS query types
 ### TCP 
 TCP in the nutshell is displayed in this crude whiteboarding 
 ![TCP in nutshell](images/TCP_in_nutshell.png)
+
+- TCP connection establishment 
+  - 3-way handshake SYN , ACK+SYN, ACK  and closing sequence FIN, ACK, FIN, ACK
+  - These connection attempts has exponential backoff setup
+  - Active open/close (Client initiated) , Passive open/close (Server initiated)
+- ISN (initial sequence number) which is randomly generated for each connection and incremented every 4us to avoid any overlaps. This is only protection against forgery outside of TLS.
+
+
+
+Here are various TCP options
+
+- TCP header size is 20 bytes and IP header size is 20 bytes. MSS is maximum TCP payload size on the ethernet is 1460 bytes.
+- TCP Selective ACK is in extension headers can ask for retrasmission of particualr lost segments.
+- TCP window size gets scaled from 16bit to 32bit by using multipliers and few additional header fields.
+- TCP timestamp options to detemine clock on the otherside
+
+TCP does path MTU discovery based on ICMP reponse like "Destination Unreachable" (Fragmentation Required) message. 
+
+Here is TCP state diagram 
+![TCP states](images/TCP_state_diagram.png)
+
