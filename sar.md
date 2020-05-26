@@ -229,3 +229,6 @@ And here is mapping of VM process space to physical space
 Linux memory page life cycle is defined in following diagram 
 ![page_life_cycle](images/linux_mem_page_lifecycle.png)
 
+Above digram in certain extent explained in following white boarding session 
+![page_life_cycle_explained](images/page_lifecycle_explained.png)
+
