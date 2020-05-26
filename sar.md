@@ -251,6 +251,22 @@ Here are two DNS query types
 ![DNS query types](images/dns_query_types.png)
 
 
+
+
+
+- There are flags in DNS query which indicates if recursion desired or recursion is availble.
+- DNS has various type of text based compression to optimize the response size.
+- `TC` bit in response is set to switch from UDP to TCP as response got trucated.
+- Every DNS response has TTL value for caching purposes and you can see TTL decreasing between consecutive queries.
+-  RRs - Resource Records Types - it is field in response of DNS query indicates category of information returned like A, NS, SOA, CNAME, PTR, MX ... etc.
+- DNS was meant to be a database to fetch various type of information associated with query strings.
+- IXFR and AXFR - Increamental and Full zone tranfer triggered by UDP based notification
+- Reverse DNS entries are stored under special TLD `in-addr.arpa.`  These are PTR records
+- `TXT`record was getting used to fetch extra infroamtion about subnets of the given domain to fight spam. Framework called SPF - Sender Policy Network.
+- `SRV`  DNS records are the records which provides various services related infromation hosted under that domain. This was used by jabber at one point.
+- Finally multicase DNS for auto discovery.
+
+
 ### DHCP
 
 - DHCP is UDP/IP based protocol which helps to maintain IP address assignements are related configurations. 
