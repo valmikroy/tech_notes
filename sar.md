@@ -275,3 +275,8 @@ Here are two DNS query types
   - Above request get responses in the form of DHCPOFFER.
   - Client selects one of the offer and does DHCPREQUEST which get acknoledged by DHCPACK with delivery of IP and related configuration items.
 - DHCP leases are something created after above offering which are stored on the disk. 
+
+
+### TCP 
+TCP in the nutshell is displayed in this crude whiteboarding 
+![TCP in nutshell](images/TCP_in_nutshell.png)
