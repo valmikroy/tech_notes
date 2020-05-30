@@ -421,4 +421,15 @@ Window size indicates how much data reciver is ready to accept from sender.
 - URG bit for urgency , causes a confusion.
 
 
+TCP Congestion control is divided into two phases, TCP Slow Start and Congestion Avoidance.
+
+- SlowStart phase  where sender's TCP starts with 10 packets (initial congestion window `cwd`) and then scale up exponentially to receiver's advertize window size (`ssthresh`).  
+- Congestion Avoidance starts after above criteria reached. After this point TCP window opens linearly and keeps a track of amount of unacknowledged data which is new `ssthresh`.
+- Whenever TCP connection percieves the packet loss it will drop back to `ssthresh` to `max(flight size/2, 2*MSS)`. 
+- Then congestion window `cwd` starts with `ssthresh + 10*MSS`  , increased by 1 for every good ACK.
+- Once  `cwd` == `ssthresh` this single increment restriction has been removed and linear increase begins. 
+
+All above is based on the simple TCP implementation and it gets more complicated with varoius TCP congestion avoidance algorithm.
+
+
 
