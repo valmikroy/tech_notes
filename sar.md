@@ -433,3 +433,33 @@ All above is based on the simple TCP implementation and it gets more complicated
 
 
 
+### UDP
+
+
+
+- UDP is packet based vs TCP which is continues stream protocol. Which makes application to be aware of packet boundries. It has no congestion or a flow control.
+
+- UDP header is 8 bytes 
+
+  - 2 bytes source port and destination port each
+  - 2 bytes length 
+  - 2 bytes checksum
+
+- UDP checksum is calculated at sender's end with pseudo header which incorporates dst and src IP information. This gets checked at the recieive end.
+
+- This pseudo header makes NAT more challenging where UDP packet modification is involved along with IP header modification.
+
+-  UDP-lite is something which provides you flexibility of having checksum for the limited are of the packet header.
+
+- IP determines the need for the fragmentation based on availbile information of the path towards destination. IP starts a timer on the arrival of first fragment to assemble packet within that time.
+
+- UDP application has to do PMTU discovery by using ICMP to avoid fragmentation. Maximum size of UDP is limited by max IPv4 packet size which is 16bit (65,535 bytes).
+
+- UDP packet do not have destination IP, so server receiving UDP packet need to fetch this infromation from the  IP layer. This is true for DNS server.
+
+- With above logic, you can start multiple UDP services attached to the same port number using `SO_REUSEADDR` and still known to which service UDP datagram inteneded for looking at the IP layer infromation.
+
+- Linux while opening IPv4:PORT socket it also provides you IPV6:PORT socket.
+
+    
+
