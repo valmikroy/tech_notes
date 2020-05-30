@@ -415,6 +415,10 @@ Window size indicates how much data reciver is ready to accept from sender.
 
 - Window size determined by reciever by looking at empty TCP recieve buffer.
 - sometimes window size set to zero due to slow reciever to stop any more data send. There is time based window probe happens from sender side to know if window got opened or not.
-- Window size field is offset relative to ACK no. 
+- Window size field is offset relative to ACK number.
+- Silly window syndrome where sender and reciever tried to reduce number of packets sent on the wire by controlling advertizement of window size until enough data get accumulated on both ends exceeding MSS or half of the TCP buffer. 
+- TCP window sizes are auto tunned for the performance reason.
+- URG bit for urgency , causes a confusion.
+
 
 
