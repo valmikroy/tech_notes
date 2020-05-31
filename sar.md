@@ -461,5 +461,34 @@ All above is based on the simple TCP implementation and it gets more complicated
 
 - Linux while opening IPv4:PORT socket it also provides you IPV6:PORT socket.
 
+
+### ICMP
+
+- ICMP protocol provides dignostics and control information for IP transport. ICMP is a part of extension headers in IPv6.
+
+- IPv4 payload has no protection. Upper layer protocols has to manage their checksums.
+
+- Some of the IPv4 messages 
+
+  - Echo and Echo Reply (Ping Pong)
+  - Destination Unreachable (this helps updating routes entry when last hop router fails to do ARP on the destination IP)
+  - Time Exceeded (TTL exhausted)
+  - Redirect (use alternate router)
+  - Packet too big (used for Path MTU discovery)
+  - Port not rechable (due to firewall blocking the port)
+
+- Systems provide limited response to repeated ICMP query messages, it also uses bucket token to control flow of ICMP messages to avoid any abuse. `icmp_ratemask` and `icmp_ratelimit` are two linux sysctl params to control the flow.
+
+- ICMP error packets contain fragment of original datagram which can be used to keep a track of path for which error has happened. 
+
+- ICMP ECHO message also includes PID of sender process to identify Reply packet came for that particualr `ping`. This is because ICMP do not have any port like other protocols and it get responded by OS layer.     
+
+- `connect()` has to be called on the socket for it to know incoming ICMP error messages for sent UDP packets.
+
+- Traceroute got implemented based on ICMP message `TIme Exceeded` which gets generated when TTL count gets exhausted.
+
+  
+
+
     
 
