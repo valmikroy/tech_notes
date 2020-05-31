@@ -490,7 +490,7 @@ All above is based on the simple TCP implementation and it gets more complicated
   
 ### IP
 
-![IP Packet](images/IP_Packet.png)
+![IP Packet](images/IP_packet.png)
 
 
     
