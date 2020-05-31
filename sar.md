@@ -452,6 +452,8 @@ All above is based on the simple TCP implementation and it gets more complicated
 -  UDP-lite is something which provides you flexibility of having checksum for the limited are of the packet header.
 
 - IP determines the need for the fragmentation based on availbile information of the path towards destination. IP starts a timer on the arrival of first fragment to assemble packet within that time.
+![UDP fragmentation](images/UDP_IPv4_fragmentation.png)
+
 
 - UDP application has to do PMTU discovery by using ICMP to avoid fragmentation. Maximum size of UDP is limited by max IPv4 packet size which is 16bit (65,535 bytes).
 
