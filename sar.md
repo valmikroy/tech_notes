@@ -488,6 +488,9 @@ All above is based on the simple TCP implementation and it gets more complicated
 - Traceroute got implemented based on ICMP message `TIme Exceeded` which gets generated when TTL count gets exhausted.
 
   
+### IP
+
+![IP Packet](images/IP_Packet.png)
 
 
     
