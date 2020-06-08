@@ -188,18 +188,17 @@ ssize_t write(int filedes, const void *buf, size_t nbytes);
 Returns: number of bytes written if OK, 1 on error
 ```
 
-
-
 File descriptor table organization
 
 ![FD table organization](images/FD%20tables%20organization.png)
 
 
+There are some atomic operations can be performed in unix environment, like `O_APPEND` will `open` the file and  `lseek` till the end of it in the atomic manner.
 
-There are some atomic operations can be performed in unix environment, for example
+`ioctl` is something to provide custom actions for the FD. Like in the past CD-ROM drive eject was the ioctl action provided through device driver for the `/dev/cdrom`.
 
-- `O_APPEND` will `open` the file and  `lseek` till the end of it in the atomic manner.
-- 
+
+
 
 
 
