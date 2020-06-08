@@ -198,6 +198,16 @@ There are some atomic operations can be performed in unix environment, like `O_A
 `ioctl` is something to provide custom actions for the FD. Like in the past CD-ROM drive eject was the ioctl action provided through device driver for the `/dev/cdrom`.
 
 
+```
+#include <unistd.h>
+int dup(int filedes); // returns lowest availble FD number duplicating filedes
+int dup2(int filedes, int filedes2);
+
+Both return: new file descriptor if OK, 1 on error
+```
+
+These functions get used for IO rdirection. `|` and `>` are some of them use `dup` functions. 
+
 
 
 
