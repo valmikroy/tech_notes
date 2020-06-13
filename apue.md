@@ -210,7 +210,9 @@ These functions get used for IO rdirection. `|` and `>` are some of them use `du
 
 
 
-
+Null character devices
+- `/dev/null` – accepts and discards all input written to it; provides an end-of-file indication when read from.
+- `/dev/zero` – accepts and discards all input written to it; produces a continuous stream of null characters (zero-value bytes) as output when read from.
 
 
 
