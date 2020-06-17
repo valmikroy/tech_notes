@@ -217,7 +217,60 @@ Null character devices
 
 
 
+### APUE CH4 - Files and Directories 
 
+- Various state functions like
+
+  -  `stat` - To get stat information  of the file by filename 
+  -  `fstat` - To get stat information of the open file using FD
+  -  `lstat` - To get stat information of symbolic link and it's discovery 
+
+- There is always a 
+
+  - real user/group ID
+  - effective user/group ID
+
+  There is replacement happens of real ID value with effective ID if `set ID` bits are set of the executables.
+
+  When setuid or setgid bit is set on the executable files so user who is executing those commands will get effective user or group ID setup according to the file's ownership. `/usr/bin/password` and `/usr/bin/mail` are examples.
+
+- Directory 
+
+  - Execute - allows to search through it and make you do `cd`
+  - Read - allows to list files
+  - Write - allows to create files
+
+- File creation in the directory 
+
+  - adapts group ID of the directory for the file if setgid is setup for the directory 
+  - otherwise takes process group ID 
+
+- `access()` uses effective User ID.
+
+- `umask()`  - it is inverse mask set for the process to govern the permission bits of any file/directory creation.
+
+- Sticky bit
+
+  - Files - it was previously used for fast loading of the file 
+  - Directory - it is used for restricted deletion of the file in that directory. Only owner can delete their own filess in the directory with `t` bit set. Example `/tmp`.
+
+- chown() only superuser can change userID of the file. Non-superuser process can change group ID of the file.
+
+- File sizes - Direcotry sizes are multiple of 16 and 512 , so symlink size is dpending on the pointed pathname.  Each entry in the dir has a fix size per unit, dir's size in in multiplication of the number of entries.
+
+- File size - `du` counts actual blocks on the other hand `st_blksize` structure keeps a track of offset which is used by `ls`. `cat` command uses `read()` which returns `0` for any block are which has no data written.
+
+- Directory `.` and `..` entries.
+
+- Hardlink for Dir is not allowed
+
+- call to `unlink()` and `open()` while using `tmpfile` , trick for mandotory clean up of temp files.
+
+- Various stdlib functions (like `open()`, `exec()` ) follow symlink in the atomic fashion that is the reason we used use them in the deployments.
+
+- call to `chdir()` does not change parent process's `pwd`. 
+
+   
 
 
 
