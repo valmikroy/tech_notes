@@ -270,6 +270,42 @@ Null character devices
 
 - call to `chdir()` does not change parent process's `pwd`. 
 
+
+### ch5 - STDIO library 
+
+- STDIO looks like a stream of characters. It can be used single byte or multibyte stream. Multibyte stream is where unicode fits in.
+
+- Standard I/Os are buffered to reduce read and write calls. IO buffer size assigned
+
+  - File operations are fully buffered 
+  - STDIN, STDOUT are lined buffered. (when redirected they become fully buffered)
+  - STDERR is unbuffered.
+  - `flush()` exists to push that buffered data in kernel space.
+
+- Opening streaming device with `fopen()` or `freopen()`. You can attach streaming IO interface to existing opened FD using `fdopen()`
+
+- Character by chracter reading/writing
+
+  - getc() , fgetc(), getchar()
+  - putc(), fputc(), putchar() 
+  - ungetc()
+
+- Line by Line reading and writing
+
+  - fgets(), gets()
+  - fputs(), puts()
+
+- Binary reading for DirectIO
+
+  - fread() and fwrite()
+
+- Positioning in the file using `ftell()`, `fseek()` . Saving and restoring file pointer positions  
+
+- Fromatter output and inputs printf , scanf and related variants 
+
+  
+
+
    
 
 
