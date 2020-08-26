@@ -81,3 +81,4 @@
     ```
 
   - VM's commited memory is something which process thinks it has for its disposal though it is not physically getting used. 
+

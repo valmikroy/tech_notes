@@ -123,6 +123,8 @@ Once above timeslice is assigned to the process it get scheduled for a run on th
 
 
 
+sched/fair.c
+
 ```C
 //Update the current task’s runtime statistics.
 static void update_curr(struct cfs_rq *cfs_rq)
@@ -148,7 +150,7 @@ static void update_curr(struct cfs_rq *cfs_rq)
 
 
 
-
+`sched_migration_cost_ns` is reference number to determine the cache hotness and to void its migration.
 
 Now, processes are sorted based on the `vruntime` in the form of red-black balanced binary tree. Any insert, update and delete can be made in O(log(n)). This tree's leftmost node is always with the least runtime which becomes the next runnable process. This happens with the `pick_next_task`.
 
@@ -164,6 +166,8 @@ Preemption of the task can only happen when it is not holding any locks and kern
 
 
 
+- WatchDog and migration has real time priority.
+
 
 
 #### Exercise 
@@ -178,11 +182,226 @@ Preemption of the task can only happen when it is not holding any locks and kern
 
 - what are kernel watchdogs?
 
-- `sched_migration_cost_ns` 
-
 - this [doc](https://doc.opensuse.org/documentation/leap/archive/42.1/tuning/html/book.sle.tuning/cha.tuning.taskscheduler.html)
 
-- which file `update_curr` belongs to.
+- how perf tool works
+
+- Nice time shown in the top output?
 
   
+
+
+
+
+
+
+
+# Interrrupts 
+
+- Interrupt processing is done while normal scheduling is halted. 
+- Interrupt execution is divided into 
+  - Top Halves 
+  - Bottom Halves (softirqs, tasklets and work queues)
+- Interrupt Descriptor Table (IDT) which stores ISR and an entry for each interrupt is called a gate.
+- PCI-MSI - Message Signaled Interrupts are different PCI beast
+- `/proc/interrupts`
+
+
+
+#### Bottom Halves
+
+This section of the code carried out by following 
+
+- Softirq : these are the actions setup during compile time of the kernel and get triggered by various IRQs as apart of bottom halves processing. Multiple sofirq instances can run in parallel. This get scheduled in the IRQ context.
+- Tasklet: these are implemented on top of softirq and defined at the runtime. It has a serial execution.
+- Workqueue:  this is a worker thread attached per processor. These usually get scheduled outside of the irq context so they can be blocked or sleep and has less memory allocation restirctions. Kworker process can be seen in `kworker/%u:%d%s (cpu, id, priority)` format.
+
+
+
+Softirqs are used generally for urgent execution like netowrk traffic handling. Various other work actions implemented through softirq can be found `/proc/softirqs`
+
+
+
+
+
+
+
+
+
+
+
+####Exercise 
+
+- MSI read up
+- get some examples which uses tasklet and workqueue for  process
+- how you monitor performance of the above?
+
+
+
+
+
+
+
+# Kernel Synchronization Methods
+
+
+
+
+
+##### Atomic 
+
+Atomic data types and operations will safeguard updates and reads inside the kernel.
+
+
+
+##### Spinlock
+
+Simple synchronization which lock the access for single process who acquires the lock and all other process keeps spinning around the lock untill it gets released. 
+
+- It can not be blocked for long time because spinning processes consumes CPU.
+- this mechanism is much cheaper to implement
+
+
+
+##### Semaphore 
+
+A semaphore is like waiting queue attached to a spin lock where processes will be waiting on the queue instead of spinning.
+
+Semaphore also allows multiple threads to acquire a lock.
+
+
+
+Exercise
+
+- what is this IPCS based semaphore, I guess they are different than kernel space.
+
+
+
+##### Mutex
+
+Mutex is the semaphore with only one thread/process allowing to acquire lock on the resource.
+
+- Mutex has to be released in same context
+- this does not allow recursive locking, that means same thread can not lock on same mutex again.
+- look the following where mutex is based on spin lock 
+
+
+
+ linux/kernel/locking/mutex.c
+
+```C
+void __sched mutex_unlock(struct mutex *lock) {
+	#ifndef CONFIG_DEBUG_LOCK_ALLOC
+	if (__mutex_unlock_fast(lock)) return;
+	#endif
+__mutex_unlock_slowpath(lock, _RET_IP_); 
+}
+```
+
+```C
+static noinline void __sched __mutex_unlock_slowpath( struct mutex *lock , unsigned long ip)
+{
+	struct task_struct *next = NULL; DEFINE_WAKE_Q(wake_q);
+	unsigned long owner;
+	mutex_release(&lock->dep_map, 1, ip);
+/*
+* Release the lock before (potentially) taking the spinlock such that * other contenders can get on with things ASAP.
+*
+* Except when HANDOFF, in that case we must not clear the owner field, * but instead set it to the top waiter.
+*/
+  
+owner = atomic_long_read(&lock->owner);
+
+  for (;;) {
+		unsigned long old;
+		#ifdef CONFIG_DEBUG_MUTEXES 
+    DEBUG_LOCKS_WARN_ON(__owner_task(owner) != current); 		        
+    DEBUG_LOCKS_WARN_ON(owner & MUTEX_FLAG_PICKUP); 
+    #endif
+		if (owner & MUTEX_FLAG_HANDOFF) break;
+		old = atomic_long_cmpxchg_release(&lock->owner, owner, 		
+                                      __owner_flags(owner));
+		if (old == owner) {
+			if (owner & MUTEX_FLAG_WAITERS)
+				break; 
+      
+      return;
+		}
+		owner = old; 
+  }
+
+  spin_lock(&lock->wait_lock); 
+  debug_mutex_unlock(lock);
+	if (!list_empty(&lock->wait_list)) {
+		/* get the first entry from the wait-list: */ 
+    struct mutex_waiter *waiter = list_first_entry(&lock->wait_list,
+				struct mutex_waiter , list);
+
+    next = waiter ->task;
+
+    debug_mutex_wake_waiter(lock, waiter);
+    wake_q_add(&wake_q, next); 
+  }
+
+  if (owner & MUTEX_FLAG_HANDOFF) 
+    __mutex_handoff(lock, next);
+
+  spin_unlock(&lock->wait_lock); 
+  
+  wake_up_q(&wake_q);
+}
+```
+
+
+
+##### Others
+
+- There are other special locks like Read/Write lock where two activities are separated out for locking.
+
+- There is something called RCU which is another synchronization mechanism in place.
+
+- There is `sequential lock` which is like semaphore with the ordered queue.
+
+- There usued to be `Big Kernel lock` which has been phased out.
+
+- `Completion variable` is a simple solution to use of the semaphore where thread will wait to let complete variable value updates.
+
+- Interrupt disabling in IRQ context and bottom haves 
+
+  ```C
+  spin_lock_irqsave(&lock, flags);
+  spin_unlock_irqrestore(&lock, flags);
+  
+  spin_lock_bh (); 
+  spin_unlock_bh ();
+  ```
+
+- Preemption disabling - this is available , how?
+
+
+
+# System calls
+
+Regarding implementatoin of the system calls
+
+https://blog.packagecloud.io/eng/2016/04/05/the-definitive-guide-to-linux-system-calls/
+
+Dump VDSO and play with it 
+
+https://stackoverflow.com/questions/17157820/access-vdsolinux
+
+
+
+
+
+
+
+#### Exercise 
+
+- go through coreutils
+- how [linking](https://www.gnu.org/software/libc/manual/html_node/Auxiliary-Vector.html) of the vDSO happens in linux 
+- The address of the `__kernel_vsyscall` function is written into an [ELF auxilliary vector](https://www.gnu.org/software/libc/manual/html_node/Auxiliary-Vector.html) where a user program or library (typically `glibc`) can find it and use it.
+- how linking of libraries happen in general 
+
+
 
