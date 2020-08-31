@@ -382,7 +382,7 @@ owner = atomic_long_read(&lock->owner);
 
 # System calls
 
-Regarding implementatoin of the system calls
+Regarding implementatoin of the system calls (weekend)
 
 https://blog.packagecloud.io/eng/2016/04/05/the-definitive-guide-to-linux-system-calls/
 
@@ -402,6 +402,54 @@ https://stackoverflow.com/questions/17157820/access-vdsolinux
 - how [linking](https://www.gnu.org/software/libc/manual/html_node/Auxiliary-Vector.html) of the vDSO happens in linux 
 - The address of the `__kernel_vsyscall` function is written into an [ELF auxilliary vector](https://www.gnu.org/software/libc/manual/html_node/Auxiliary-Vector.html) where a user program or library (typically `glibc`) can find it and use it.
 - how linking of libraries happen in general 
+
+
+
+# Timer
+
+Some information about timer https://blog.packagecloud.io/eng/2017/03/08/system-calls-are-much-slower-on-ec2/
+
+https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-1.html
+
+
+
+
+
+
+
+
+
+```shell
+$ dmesg | grep "clocksource:"
+[    0.000000] clocksource: refined-jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645519600211568 ns
+[    0.000000] clocksource: hpet: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 79635855245 ns
+[    0.832521] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+[    2.236031] clocksource: Switched to clocksource hpet
+[    2.451204] clocksource: acpi_pm: mask: 0xffffff max_cycles: 0xffffff, max_idle_ns: 2085701024 ns
+[    4.550832] clocksource: tsc: mask: 0xffffffffffffffff max_cycles: 0x24093d6e846, max_idle_ns: 440795249997 ns
+[    5.564342] clocksource: Switched to clocksource tsc
+```
+
+
+
+
+
+kthread lauched by `rest_init()`
+
+```shell
+$ ps ax |grep kthreadd | grep -v grep
+    2 ?        S      0:00 [kthreadd]
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
