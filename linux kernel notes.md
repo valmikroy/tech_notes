@@ -405,3 +405,13 @@ https://stackoverflow.com/questions/17157820/access-vdsolinux
 
 
 
+
+
+# Timer 
+
+
+
+#### Exercise 
+
+- how sleep functionality is implemneted using timer.
+- 
