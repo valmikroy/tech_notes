@@ -1078,9 +1078,70 @@ static int __dev_queue_xmit(struct sk_buff *skb, void *accel_priv)
 - `skb_reset_mac_header` reset the skb header pointers to read hardware frame headers
 - `rcu_read_lock_bh` bottom half RCU (Read Copy Update) lock. 
 - `skb_update_prio` network cgroup priority
--  
+- Move on to TX queue selection with `netdev_pick_tx`
 
 
+
+
+
+`netdev_pick_tx`  from `./net/core/flow_dissector.c`does a queue selection which is attached to NIC ring buffer. 
+
+- skips all selection if there is only one queue 
+- check for device driver defined hardware specific queue selection function `ndo_select_queue`
+- if above functionality is not present then pick using `__netdev_pick_tx`
+
+```C
+struct netdev_queue *netdev_pick_tx(struct net_device *dev,
+                                    struct sk_buff *skb,
+                                    void *accel_priv)
+{
+        int queue_index = 0;
+
+        if (dev->real_num_tx_queues != 1) { /* selection skip if single queue */
+                const struct net_device_ops *ops = dev->netdev_ops;
+                if (ops->ndo_select_queue)
+                  			/* NIC HW based selection through device driver */
+                        queue_index = ops->ndo_select_queue(dev, skb,
+                                                            accel_priv);
+                else
+                  			/* kernel based queue selection with XPS hook */
+                        queue_index = __netdev_pick_tx(dev, skb);
+
+                if (!accel_priv)
+                        queue_index = dev_cap_txqueue(dev, queue_index);
+        }
+
+        skb_set_queue_mapping(skb, queue_index);
+        return netdev_get_tx_queue(dev, queue_index);
+}
+```
+
+`__netdev_pick_tx` will select queue 
+
+- by looking at XPS configuration using `get_xps_queue`
+- or by using `skb_tx_hash`  which calls `__skb_tx_hash` defined in ` ./net/core/flow_dissector.c`  which is an expored symbol. 
+
+
+
+Continuing with `__dev_queue_xmit` which eventually calls `__dev_xmit_skb` which is armed with qdiscs and defined in `./net/core/dev.c`.
+
+NOTE: there is another path which goes directly to `dev_hard_start_xmit` skipping qdiscs if device is a loopback. I have skipped that part of code here.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
 
 
 
