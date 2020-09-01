@@ -11,43 +11,43 @@
 `include/linux/sched.h`
 
 ```C
-struct task_struct { 
+struct task_struct {
 
 ...
 
   // -1 unrunnable , 0 runnable , >0 stopped:
 	volatile long 							state;
-	
+
 	// Current CPU:
-	unsigned int 								cpu; 
+	unsigned int 								cpu;
 	cpumask_t 									cpus_allowed;
-	
+
 	const struct sched_class 		*sched_class;
-	struct sched_entity 				se; 
+	struct sched_entity 				se;
 	int 												prio;
-	
+
 	pid_t 											pid;
-	
-	
+
+
 	// Real parent process:
 	struct task_struct __rcu 		*real_parent;
 	struct list_head 						children;
-	
-	
+
+
 	// Filesystem information:
 	struct fs_struct						*fs;
-	
+
 	// Open file information:
-	struct files_struct 				*files; 
-	
-	
+	struct files_struct 				*files;
+
+
 	...
 }
 ```
 
 - Above get manged in doublly linked `task_list`
 
-- When a process makes a `clone()` syscall, `_do_fork()` is executed due to system call definitions of clone in `kernel/fork.c.` call reached to `copy_process()` which does most of the intersting parts like 
+- When a process makes a `clone()` syscall, `_do_fork()` is executed due to system call definitions of clone in `kernel/fork.c.` call reached to `copy_process()` which does most of the intersting parts like
 
   - error handling and the duplicate task with `dup_task_struct()`
 
@@ -65,24 +65,24 @@ struct task_struct {
 
 - Note about golang subroutine - they do not translate into OS threads.
 
-  
 
-  
 
-#### Exercise 
+
+
+#### Exercise
 - look at `pidstat` cheat sheets to know more information about process
 - `execsnoop` is the only efficient way to track past spawned processes.
-  
-
-  
 
 
 
 
 
-### Scheduling 
 
-There are scheduling classes 
+
+
+### Scheduling
+
+There are scheduling classes
 
 - **SCHED NORMAL** - normal process class
 - **SCHED FIFO ** - this is the class which run in the real time priority without any time slice, that means it process with this class of scheduling runs till it is finished or interrupted by other process with the higher priority.
@@ -94,11 +94,11 @@ O(1) scheduler was the old scheduler where according to nice value attached to e
 
 
 
-#### CFS 
+#### CFS
 
-This algorithm try to be fair with the scheduling prioirites of the task. Amount of time can be taken by a process depends on 
+This algorithm try to be fair with the scheduling prioirites of the task. Amount of time can be taken by a process depends on
 
-- niceness 
+- niceness
 - amount of time spent by a process on the CPU
 
 This also manages real-time priority tasks.
@@ -129,20 +129,20 @@ sched/fair.c
 //Update the current task’s runtime statistics.
 static void update_curr(struct cfs_rq *cfs_rq)
 {
-	struct sched_entity *curr = cfs_rq ->curr; 
-  u64 now = rq_clock_task(rq_of(cfs_rq)); 
+	struct sched_entity *curr = cfs_rq ->curr;
+  u64 now = rq_clock_task(rq_of(cfs_rq));
   u64 delta_exec;
 ...
-  delta_exec = now - curr->exec_start; 
+  delta_exec = now - curr->exec_start;
   curr->exec_start = now;
 ...
-//statistics 
-  schedstat_set(curr->statistics.exec_max, 
+//statistics
+  schedstat_set(curr->statistics.exec_max,
   max(delta_exec, curr->statistics.exec_max));
 
-  curr->sum_exec_runtime += delta_exec; 
+  curr->sum_exec_runtime += delta_exec;
   schedstat_add(cfs_rq->exec_clock, delta_exec);
- 
+
   curr->vruntime += calc_delta_fair(delta_exec, curr);     
   update_min_vruntime(cfs_rq);
 }
@@ -170,7 +170,7 @@ Preemption of the task can only happen when it is not holding any locks and kern
 
 
 
-#### Exercise 
+#### Exercise
 
 - where IO bound processes sleeps? the work queue ? How such queue is implemented. How such process get awaken.
 
@@ -178,7 +178,7 @@ Preemption of the task can only happen when it is not holding any locks and kern
 
 - Scheduling related ebpf exercises
 
-- confirm SCHD_FIFO behaviour 
+- confirm SCHD_FIFO behaviour
 
 - what are kernel watchdogs?
 
@@ -188,7 +188,6 @@ Preemption of the task can only happen when it is not holding any locks and kern
 
 - Nice time shown in the top output?
 
-  
 
 
 
@@ -196,11 +195,12 @@ Preemption of the task can only happen when it is not holding any locks and kern
 
 
 
-# Interrrupts 
 
-- Interrupt processing is done while normal scheduling is halted. 
-- Interrupt execution is divided into 
-  - Top Halves 
+# Interrrupts
+
+- Interrupt processing is done while normal scheduling is halted.
+- Interrupt execution is divided into
+  - Top Halves
   - Bottom Halves (softirqs, tasklets and work queues)
 - Interrupt Descriptor Table (IDT) which stores ISR and an entry for each interrupt is called a gate.
 - PCI-MSI - Message Signaled Interrupts are different PCI beast
@@ -210,7 +210,7 @@ Preemption of the task can only happen when it is not holding any locks and kern
 
 #### Bottom Halves
 
-This section of the code carried out by following 
+This section of the code carried out by following
 
 - Softirq : these are the actions setup during compile time of the kernel and get triggered by various IRQs as apart of bottom halves processing. Multiple sofirq instances can run in parallel. This get scheduled in the IRQ context.
 - Tasklet: these are implemented on top of softirq and defined at the runtime. It has a serial execution.
@@ -230,7 +230,7 @@ Softirqs are used generally for urgent execution like netowrk traffic handling. 
 
 
 
-####Exercise 
+####Exercise
 
 - MSI read up
 - get some examples which uses tasklet and workqueue for  process
@@ -248,7 +248,7 @@ Softirqs are used generally for urgent execution like netowrk traffic handling. 
 
 
 
-##### Atomic 
+##### Atomic
 
 Atomic data types and operations will safeguard updates and reads inside the kernel.
 
@@ -256,14 +256,14 @@ Atomic data types and operations will safeguard updates and reads inside the ker
 
 ##### Spinlock
 
-Simple synchronization which lock the access for single process who acquires the lock and all other process keeps spinning around the lock untill it gets released. 
+Simple synchronization which lock the access for single process who acquires the lock and all other process keeps spinning around the lock untill it gets released.
 
 - It can not be blocked for long time because spinning processes consumes CPU.
 - this mechanism is much cheaper to implement
 
 
 
-##### Semaphore 
+##### Semaphore
 
 A semaphore is like waiting queue attached to a spin lock where processes will be waiting on the queue instead of spinning.
 
@@ -283,7 +283,7 @@ Mutex is the semaphore with only one thread/process allowing to acquire lock on 
 
 - Mutex has to be released in same context
 - this does not allow recursive locking, that means same thread can not lock on same mutex again.
-- look the following where mutex is based on spin lock 
+- look the following where mutex is based on spin lock
 
 
 
@@ -294,7 +294,7 @@ void __sched mutex_unlock(struct mutex *lock) {
 	#ifndef CONFIG_DEBUG_LOCK_ALLOC
 	if (__mutex_unlock_fast(lock)) return;
 	#endif
-__mutex_unlock_slowpath(lock, _RET_IP_); 
+__mutex_unlock_slowpath(lock, _RET_IP_);
 }
 ```
 
@@ -309,45 +309,45 @@ static noinline void __sched __mutex_unlock_slowpath( struct mutex *lock , unsig
 *
 * Except when HANDOFF, in that case we must not clear the owner field, * but instead set it to the top waiter.
 */
-  
+
 owner = atomic_long_read(&lock->owner);
 
   for (;;) {
 		unsigned long old;
-		#ifdef CONFIG_DEBUG_MUTEXES 
+		#ifdef CONFIG_DEBUG_MUTEXES
     DEBUG_LOCKS_WARN_ON(__owner_task(owner) != current); 		        
-    DEBUG_LOCKS_WARN_ON(owner & MUTEX_FLAG_PICKUP); 
+    DEBUG_LOCKS_WARN_ON(owner & MUTEX_FLAG_PICKUP);
     #endif
 		if (owner & MUTEX_FLAG_HANDOFF) break;
 		old = atomic_long_cmpxchg_release(&lock->owner, owner, 		
                                       __owner_flags(owner));
 		if (old == owner) {
 			if (owner & MUTEX_FLAG_WAITERS)
-				break; 
-      
+				break;
+
       return;
 		}
-		owner = old; 
+		owner = old;
   }
 
-  spin_lock(&lock->wait_lock); 
+  spin_lock(&lock->wait_lock);
   debug_mutex_unlock(lock);
 	if (!list_empty(&lock->wait_list)) {
-		/* get the first entry from the wait-list: */ 
+		/* get the first entry from the wait-list: */
     struct mutex_waiter *waiter = list_first_entry(&lock->wait_list,
 				struct mutex_waiter , list);
 
     next = waiter ->task;
 
     debug_mutex_wake_waiter(lock, waiter);
-    wake_q_add(&wake_q, next); 
+    wake_q_add(&wake_q, next);
   }
 
-  if (owner & MUTEX_FLAG_HANDOFF) 
+  if (owner & MUTEX_FLAG_HANDOFF)
     __mutex_handoff(lock, next);
 
-  spin_unlock(&lock->wait_lock); 
-  
+  spin_unlock(&lock->wait_lock);
+
   wake_up_q(&wake_q);
 }
 ```
@@ -366,13 +366,13 @@ owner = atomic_long_read(&lock->owner);
 
 - `Completion variable` is a simple solution to use of the semaphore where thread will wait to let complete variable value updates.
 
-- Interrupt disabling in IRQ context and bottom haves 
+- Interrupt disabling in IRQ context and bottom haves
 
   ```C
   spin_lock_irqsave(&lock, flags);
   spin_unlock_irqrestore(&lock, flags);
-  
-  spin_lock_bh (); 
+
+  spin_lock_bh ();
   spin_unlock_bh ();
   ```
 
@@ -382,11 +382,11 @@ owner = atomic_long_read(&lock->owner);
 
 # System calls
 
-Regarding implementatoin of the system calls
+Regarding implementatoin of the system calls (weekend)
 
 https://blog.packagecloud.io/eng/2016/04/05/the-definitive-guide-to-linux-system-calls/
 
-Dump VDSO and play with it 
+Dump VDSO and play with it
 
 https://stackoverflow.com/questions/17157820/access-vdsolinux
 
@@ -396,22 +396,73 @@ https://stackoverflow.com/questions/17157820/access-vdsolinux
 
 
 
-#### Exercise 
+#### Exercise
 
 - go through coreutils
-- how [linking](https://www.gnu.org/software/libc/manual/html_node/Auxiliary-Vector.html) of the vDSO happens in linux 
+- how [linking](https://www.gnu.org/software/libc/manual/html_node/Auxiliary-Vector.html) of the vDSO happens in linux
 - The address of the `__kernel_vsyscall` function is written into an [ELF auxilliary vector](https://www.gnu.org/software/libc/manual/html_node/Auxiliary-Vector.html) where a user program or library (typically `glibc`) can find it and use it.
-- how linking of libraries happen in general 
+- how linking of libraries happen in general
 
 
 
+<<<<<<< HEAD
 
 
-# Timer 
+# Timer
 
 
 
-#### Exercise 
+#### Exercise
 
 - how sleep functionality is implemneted using timer.
-- 
+-
+=======
+# Timer
+
+Some information about timer https://blog.packagecloud.io/eng/2017/03/08/system-calls-are-much-slower-on-ec2/
+
+https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-1.html
+
+
+
+
+
+
+
+
+
+```shell
+$ dmesg | grep "clocksource:"
+[    0.000000] clocksource: refined-jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645519600211568 ns
+[    0.000000] clocksource: hpet: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 79635855245 ns
+[    0.832521] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns
+[    2.236031] clocksource: Switched to clocksource hpet
+[    2.451204] clocksource: acpi_pm: mask: 0xffffff max_cycles: 0xffffff, max_idle_ns: 2085701024 ns
+[    4.550832] clocksource: tsc: mask: 0xffffffffffffffff max_cycles: 0x24093d6e846, max_idle_ns: 440795249997 ns
+[    5.564342] clocksource: Switched to clocksource tsc
+```
+
+
+
+
+
+kthread lauched by `rest_init()`
+
+```shell
+$ ps ax |grep kthreadd | grep -v grep
+    2 ?        S      0:00 [kthreadd]
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+>>>>>>> 5be19093294d348ecb6174daf4f3bcca78d831bb
