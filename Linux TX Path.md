@@ -1129,6 +1129,147 @@ NOTE: there is another path which goes directly to `dev_hard_start_xmit` skippin
 
 
 
+`__dev_xmit_skb`
+
+```C
+static inline int __dev_xmit_skb(struct sk_buff *skb, struct Qdisc *q,
+                                 struct net_device *dev,
+                                 struct netdev_queue *txq)
+{
+        /* first lock which later get acquired*/
+  			/* spin_lock(root_lock); */
+        spinlock_t *root_lock = qdisc_lock(q);  
+        bool contended;
+        int rc;
+
+  			/* calculation of the size to assist NIC offloading */
+        qdisc_pkt_len_init(skb);
+        qdisc_calculate_pkt_len(skb, q);
+        /*
+         * Heuristic to force contended enqueues to serialize on a
+         * separate lock before trying to get qdisc main lock.
+         * This permits __QDISC_STATE_RUNNING owner to get the lock more often
+         * and dequeue packets faster.
+         */
+        contended = qdisc_is_running(q);
+        if (unlikely(contended))
+                spin_lock(&q->busylock);  /* second lock */
+  
+  /** code continues **/
+```
+
+First it does 
+
+- packet length calculation to assist various NIC offloading 
+- there is two lock strategy to reduce contention 
+
+
+
+Then three possible cases are getting handled with the `if` statement 
+
+- If qdisc in deactivated then drop packets
+```C
+       if (unlikely(test_bit(__QDISC_STATE_DEACTIVATED, &q->state))) {
+                kfree_skb(skb);
+                rc = NET_XMIT_DROP;
+```
+
+- Following loop handles the qdisc bypass case which I have not completely understood, so it checks for following conditions 
+
+  - If qdisc allows to bypass packets `q->flags & TCQ_F_CAN_BYPASS` like The `pfifo_fast` qdisc allows packets to bypass the queuing system.
+  - `!qdisc_qlen(q)` The qdisc’s queue has no data in it that is waiting to be transmit.
+  - `qdisc_run_begin(p)` qdisc as not currently running 
+
+  If all above conditions evalutes to be true then with flag (`IFF_XMIT_DST_RELEASE`) and stats `qdisc_bstats_update` updates, `sch_direct_xmit` will get called.
+
+  If `sch_direct_xmit`call shows that queue is not empty then `__qdisc_run` is called to restart qdisc else `qdisc_run_end` will get called. 
+```C
+          } else if ((q->flags & TCQ_F_CAN_BYPASS) && !qdisc_qlen(q) &&
+                     qdisc_run_begin(q)) {
+                  /*
+                   * This is a work-conserving queue; there are no old skbs
+                   * waiting to be sent out; and the qdisc is not running -
+                   * xmit the skb directly.
+                   */
+                  if (!(dev->priv_flags & IFF_XMIT_DST_RELEASE))
+                          skb_dst_force(skb);
+  
+                  qdisc_bstats_update(q, skb);
+  
+                  if (sch_direct_xmit(skb, q, dev, txq, root_lock)) {
+                          if (unlikely(contended)) {
+                                  spin_unlock(&q->busylock);
+                                  contended = false;
+                          }
+                          __qdisc_run(q);
+                  } else
+                          qdisc_run_end(q);
+  
+                  rc = NET_XMIT_SUCCESS;
+
+            
+```
+
+- All other cases it schedules `__qdisc_run(p)` to start packet processing after queuing.
+
+```C
+        } else {
+                skb_dst_force(skb);
+                rc = q->enqueue(skb, q) & NET_XMIT_MASK;
+                if (qdisc_run_begin(q)) {
+                        if (unlikely(contended)) {
+                                spin_unlock(&q->busylock);
+                                contended = false;
+                        }
+                        __qdisc_run(q);
+                }
+        }
+```
+
+
+
+
+
+### Queuing disciplines!
+
+- `qdisc_run_begin` marks qdisc to running state before calling `__qdisc_run`.
+- `qdisc_run_end` removes the running status of the disc
+- both defined in `./include/net/sch_generic.h`
+
+
+
+`__qdisc_run` continue calling `qdisc_restart` in the busy loop until break condition triggers.
+
+```C
+void __qdisc_run(struct Qdisc *q)
+{
+        int quota = weight_p;
+
+        while (qdisc_restart(q)) {
+                /*
+                 * Ordered by possible occurrence: Postpone processing if
+                 * 1. we've exceeded packet quota
+                 * 2. another process needs the CPU;
+                 */
+                if (--quota <= 0 || need_resched()) {
+                        __netif_schedule(q);
+                        break;
+                }
+        }
+
+        qdisc_run_end(q);
+}
+```
+
+This function begins by obtaining the `weight_p` value, sysctl param similar to recieve path.
+
+- It calls `qdisc_restart` in a busy loop until it returns false (or the break below is triggered).
+- Determines 
+  - if either the quota drops below zero 
+  - or `need_resched()` returns true. - If the user program has exhausted its time quota in the kernel, `need_resched` will return true. 
+  - If either is `true`, `__netif_schedule` is called and the loop is broken out of.
+
+This is the point where kernel thread comes out of system call space and skb is transfered into softirq space for the further transfer.
 
 
 
@@ -1140,8 +1281,6 @@ NOTE: there is another path which goes directly to `dev_hard_start_xmit` skippin
 
 
 
-
- 
 
 
 
