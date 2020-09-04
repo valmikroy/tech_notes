@@ -70,6 +70,7 @@ struct task_struct {
 
 
 #### Exercise
+
 - look at `pidstat` cheat sheets to know more information about process
 - `execsnoop` is the only efficient way to track past spawned processes.
 
@@ -371,7 +372,7 @@ owner = atomic_long_read(&lock->owner);
   ```C
   spin_lock_irqsave(&lock, flags);
   spin_unlock_irqrestore(&lock, flags);
-
+  
   spin_lock_bh ();
   spin_unlock_bh ();
   ```
@@ -414,8 +415,9 @@ https://stackoverflow.com/questions/17157820/access-vdsolinux
 
 - how sleep functionality is implemneted using timer.
 
-  
+
   =======
+
 # Timer
 
 Some information about timer https://blog.packagecloud.io/eng/2017/03/08/system-calls-are-much-slower-on-ec2/
@@ -533,5 +535,157 @@ checkout Privillage level in RPL
  The following steps are needed to get a physical address in protected mode:
 
 - The segment selector must be loaded in one of the segment registers.
+
 - The CPU tries to find a segment descriptor at the offset `GDT address + Index` from the selector and then loads the descriptor into the *hidden* part of the segment register.
+
 - If paging is disabled, the linear address of the segment, or its physical address, is given by the formula: Base address (found in the descriptor obtained in the previous step) + Offset.
+
+- In short, it **initializes GDT** because kernel needs to start addressing memory.
+
+- `boot_params` structure gets populated with `copy_boot_params(void)` in `main.c` , reading them from location where boot loader has stored them.
+
+- `biosregs` structure gets populated and **serial console gets initialized**. Interrupt 0x10 gets called to print very first charater and later serial console method get used. tty.C
+
+- **Heap gets initalized.** 
+
+- Checking CPU for its flags and **presense for a long mode**. BIOS 0x15 interrupt used to inform BIOS about switch into that mode.  CPU validation through the `validate_cpu` function from [arch/x86/boot/cpu.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/cpu.c) source code file.
+
+- **BIOS  0xE820 memory reporting** to the operating system using interrupt 0x15. We can see that as first line in dmesg.Ultimately, this function collects data from the address allocation table and writes this data into the `e820_entry` array:
+
+  - start of memory segment
+  - size of memory segment
+  - type of memory segment (whether the particular segment is usable or reserved)
+
+- **Initialization of the keyboard** with a call to the [`keyboard_init`](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/main.c) calls 0x16 interrupt.
+
+- Query various BIOS functions like APM and Disk drives.
+
+- Setup a video mode.  `vid_mode=ask` in grub which usually set to vga or vesa.
+
+- Transition to **protected mode**.
+
+  - function call - `go_to_protected_mode` - in [arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/main.c). 
+  - it disables NMI, try to enable A20, resets match processor, masks all programmable interrupt controllers except IRQ2 (i think its a keyboard)
+  - Sets up Interrupt Discriptor Table. `setup_idt` 
+  - Sets up GDT `setup_gdt`
+  - jump with  `protected_mode_jump`  in [arch/x86/boot/pmjump.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/pmjump.S) to enable  `PE` (Protection Enable) bit in the `CR0` control register:
+
+  
+
+#### Journey towards long mode - 64 bit
+
+- [x86 boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt) 
+
+- `bzimage` is a gzipped package consisting of `vmlinux`, `header` and `kernel setup code` and job of `kernel setup code` is to prepare to enter into a long mode with `vmlinux` execution after its decompression. So far we have been executing `kernel setup code`.
+
+- [head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) will decompress the kernel and enter the long mode. 
+
+- **Setup a stack space** and verification of CPU for long mode support.  Push `startup_64` function to the stack which then CPU extracts from the stack while shifting to long mode. 
+
+- Move processor into long mode or straight in 64 bit mode
+
+  - 8 new general purpose registers from `r8` to `r15`
+  - All general purpose registers are 64-bit now
+  - A 64-bit instruction pointer - `RIP`
+  - A new operating mode - Long mode;
+  - 64-Bit Addresses and Operands;
+  - RIP Relative Addressing (we will see an example of this in the coming parts).
+  - Enable [PAE](https://en.wikipedia.org/wiki/Physical_Address_Extension);
+  - Build page tables and load the address of the top level page table into the `cr3` register
+  - Enable `EFER.LME` in the MSR to  `0xC0000080`
+  - Enable paging ( just for 4G memory )
+
+- Linux addresses – Virtual address to linear address to physical address
+  ![img](SRE/assets/virtual_linear_physical_addresses.png)
+
+  - ***Virtual addresses\*** are used by an application program. They consist of a 16-bit selector and a 32-bit offset. In the flat memory model, the selectors are preloaded into segment registers CS, DS, SS, and ES, which all refer to the same linear address. They need not be considered by the application. Addresses are simply 32-bit near pointers.
+  - ***Linear addresses\*** are calculated from virtual addresses by segment translation. The base of the segment referred to by the selector is added to the virtual offset, giving a 32-bit linear address. Under RTTarget-32, virtual offsets are equal to linear addresses since the base of all code and data segments is 0.
+  - ***Physical addresses\*** are calculated from linear addresses through paging. The linear address is used as an index into the Page Table where the CPU locates the corresponding physical address.
+
+  
+
+- The Linux kernel uses `4-level` paging, and we generally **build 6 page tables**:
+
+  - One `PML4` or `Page Map Level 4` table with one entry;
+  - One `PDP` or `Page Directory Pointer` table with four entries;
+  - Four Page Directory tables with a total of `2048` entries.
+
+- Enable paging and execute `lret` instuction which will start executing  `startup_64` function from the stack. 
+
+- That should put system into 64 bit more which is a native mode for x86_64.
+
+
+
+#### Decompress the kernel
+
+-  from the `64-bit` entry point - `startup_64` which is located in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) 
+
+- The `extract_kernel` function is defined in the [arch/x86/boot/compressed/misc.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/misc.c) source code file and takes six arguments:
+
+  - `rmode` - a pointer to the [boot_params](https://github.com/torvalds/linux/blob/v4.16/arch/x86/include/uapi/asm/bootparam.h) structure which is filled by either the bootloader or during early kernel initialization;
+  - `heap` - a pointer to `boot_heap` which represents the start address of the early boot heap;
+  - `input_data` - a pointer to the start of the compressed kernel or in other words, a pointer to the `arch/x86/boot/compressed/vmlinux.bin.bz2` file;
+  - `input_len` - the size of the compressed kernel;
+  - `output` - the start address of the decompressed kernel;
+  - `output_len` - the size of the decompressed kernel;
+
+  All arguments will be passed through registers as per the [System V Application Binary Interface](http://www.x86-64.org/documentation/abi.pdf). We've finished all the preparations and can now decompress the kernel.
+
+-  [boot_params](https://github.com/torvalds/linux/blob/v4.16/arch/x86/include/uapi/asm/bootparam.h) structure holds arguments which are passed to kernel image executable after its decompression.
+
+- After we initialize the heap pointers, the next step is to call the `choose_random_location` function from the [arch/x86/boot/compressed/kaslr.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/kaslr.c) source code file. kASLR  which allows decompression of the kernel into a random address, for security reasons..
+
+-  `Decompressing Linux...`
+
+- Kernel is an ELF executable.
+
+- sections of linux kernel 
+
+  ```  
+   readelf -l vmlinux
+  
+  Elf file type is EXEC (Executable file)
+  Entry point 0x1000000
+  There are 5 program headers, starting at offset 64
+  
+  Program Headers:
+    Type           Offset             VirtAddr           PhysAddr
+                   FileSiz            MemSiz              Flags  Align
+    LOAD           0x0000000000200000 0xffffffff81000000 0x0000000001000000
+                   0x000000000144c000 0x000000000144c000  R E    0x200000
+    LOAD           0x0000000001800000 0xffffffff82600000 0x0000000002600000
+                   0x0000000000257000 0x0000000000257000  RW     0x200000
+    LOAD           0x0000000001c00000 0x0000000000000000 0x0000000002857000
+                   0x000000000002d000 0x000000000002d000  RW     0x200000
+    LOAD           0x0000000001c84000 0xffffffff82884000 0x0000000002884000
+                   0x0000000000d7c000 0x0000000000d7c000  RWE    0x200000
+    NOTE           0x0000000001000e84 0xffffffff81e00e84 0x0000000001e00e84
+                   0x00000000000001ec 0x00000000000001ec         0x4
+  
+   Section to Segment mapping:
+    Segment Sections...
+     00     .text .notes __ex_table .rodata .pci_fixup .tracedata __ksymtab __ksymtab_gpl __ksymtab_strings __init_rodata __param __modver
+     01     .data __bug_table .vvar
+     02     .data..percpu
+     03     .init.text .altinstr_aux .init.data .x86_cpu_dev.init .parainstructions .altinstructions .altinstr_replacement .iommu_table .apicdrivers .exit.text .smp_locks .data_nosave .bss .brk .init.scratch
+     04     .notes
+  ```
+
+These segments of elf binaries will get loaded.
+
+After the kernel is relocated, we return from the `extract_kernel` function to [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S).
+
+The address of the kernel will be in the `rax` register and we jump to it:
+
+```assembly
+jmp    *%rax
+```
+
+That's all. Now we are in the kernel! Executing..... Booting....
+
+
+
+#### Kernel booting
+
+- Initialize memory map for memory above 4G. `initialize_identity_maps`
+- choose andom memory location to extract kernel without abstructing memory occupied by `initrd`.
