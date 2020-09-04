@@ -405,8 +405,6 @@ https://stackoverflow.com/questions/17157820/access-vdsolinux
 
 
 
-<<<<<<< HEAD
-
 
 # Timer
 
@@ -415,8 +413,9 @@ https://stackoverflow.com/questions/17157820/access-vdsolinux
 #### Exercise
 
 - how sleep functionality is implemneted using timer.
--
-=======
+
+  
+  =======
 # Timer
 
 Some information about timer https://blog.packagecloud.io/eng/2017/03/08/system-calls-are-much-slower-on-ec2/
@@ -457,12 +456,82 @@ $ ps ax |grep kthreadd | grep -v grep
 
 
 
+# Booting
 
 
 
 
 
+#### BIOS and pre-BIOS
+
+- Computer wakes up 
+
+- wakes up CPU 
+
+- default values in CPU registers 
+
+- kicks in real mode 
+
+- 20 bit address bus has capability to address 1MB of memory but CPU registers are 16bit then it has ability address 64KB at once. So 1MB memory divided into 64KB segments. those will be 16 segments.
+
+- Physical address (20bit) = Segment selection * 16 + offset.  (CS:IP)
+
+- Maximum theorotical addressable memory in this setting will be 64KB above 1MB. 
+
+  ```assembly
+  >>> hex((0xffff << 4) + 0xffff)
+  '0x10ffef'  <- 1MB + 64KB - 16bytes
+  ```
+
+  
+
+- In practise it becomes `0x00ffef` with the [A20 line](https://en.wikipedia.org/wiki/A20_line) disabled.
+
+- With all the initial values in `CS` there is the address `0xfffffff0`, which is 16 bytes below 4GB called reset vector position.
+
+- Reset vector where CPU finds its first instruction to execute which points to BIOS.
+
+- BIOS selects boot device then continue booting 
+
+- worth looking at  [coreboot](https://www.coreboot.org/Developer_Manual/Memory_map) documentation where BIOS ROM get mapped to address location.
+
+  ```
+  0xFFFE_0000 - 0xFFFF_FFFF: 128 kilobyte ROM mapped into address space
+  ```
+
+- after this BIOS selects boot device which loads boot loader
+
+#### Boot loader
+
+- boot loader split between MBR and first sector  of the booting device
+- Boot loader fill in some headers in the linker code and loads kernel boot sector market with magic header `MZ`
+  - Jump to this magic address which know as `start_of_setup`
+    - Make sure that all segment register values are equal
+    - Set up a correct stack, if needed
+    - Set up [bss](https://en.wikipedia.org/wiki/.bss)
+    - Jump to the C code `main()` in [arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/main.c)
+
+#### Protected mode (before long mode)
+
+- protected mode moved from 20 bit addressing (1MB) to 32 bit addressing (4GB)
+- this mode also supports segmentation and paging. Previously memory segments were 64KB size but in protected mode they are different. 
+- In protected mode size and location of each segment descriebd by data structure `Segment Descriptor` which is 64-bit in size. These segment descritors are stored in a data structure called the `Global Descriptor Table (GDT)`.
+- GDT addressed stored in CPU 48 bit register called GDTR and can be retrived by `lgdt gdt` instruction. 
+- ![img](SRE/assets/gdt_and_ldt_mapping.png)
+
+Index can come from either GDT or LDT. GDT is to store kernel related addresses and LDT is created for each process. 
+
+GDT or LDT plus offset will give you physical location of the memory.
+**Logical Address = Segment Selector (16 bit) + Offset (13 bit)**
 
 
 
->>>>>>> 5be19093294d348ecb6174daf4f3bcca78d831bb
+![img](SRE/assets/segment_selector.png)
+
+checkout Privillage level in RPL
+
+ The following steps are needed to get a physical address in protected mode:
+
+- The segment selector must be loaded in one of the segment registers.
+- The CPU tries to find a segment descriptor at the offset `GDT address + Index` from the selector and then loads the descriptor into the *hidden* part of the segment register.
+- If paging is disabled, the linear address of the segment, or its physical address, is given by the formula: Base address (found in the descriptor obtained in the previous step) + Offset.
