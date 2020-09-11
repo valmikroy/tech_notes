@@ -1172,7 +1172,32 @@ Other steps
 # Back to `start_kernel`
 
 - call of the `mm_init_cpumask` function. This function sets the [cpumask](https://0xax.gitbook.io/linux-insides/summary/concepts/linux-cpu-2) pointer to the memory descriptor `cpumask`.
-- 
+- setup the CPU memory areas `setup_per_cpu_areas`  this will require to save CPU specific `GDT` segments for the tasks which are running on that CPU.
+- `get_cpu_gdt_table` used to get CPU specific GDT.
+- Then build zones for each NUMA node represented by `struct pglist_data` and `zone`
+- `page_alloc_init` function call and parse kernel arguments.
+- `setup_log_buf` for kernel log buffer.
+- start up PID management tree `pidhash_init`
+- Initialize VFS related data structure `vfs_caches_init_early`
+- then start `mm_init`
+
+
+
+#### **Scheduler initialization**
+
+- `sched_init` which initiate this process
+- It will initialize array of `waitqueues` which is necessary for processes which are not runnable.
+-  Special `sched_entity` structure that is used by the Linux kernel scheduler as scheduling unit for each process instead of `task_struct`
+- look for structures `cfs_rq` and `rt_rq` both represents run queues per CPU for regular and realtime priority processes. These get initialized for each CPU.
+-  real-time scheduler requires global resources to make scheduling decision , to create scalable solution for such access kernel has `root_domain` structure.
+
+
+
+
+
+
+
+
 
 
 
