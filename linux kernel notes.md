@@ -1193,6 +1193,186 @@ Other steps
 
 
 
+#### RCU (Read-Copy Update ) initialization 
+
+The RCU technique is designed for rarely-modified data structures. 
+
+If somebody wants to change this data structure, we make a copy of this data structure and make all changes in the copy. In the same time all other users of the data structure use old version of it. Next, we need to choose safe moment when original version of the data structure will have no users and update it with the modified copy.
+
+
+
+Related params
+
+- `rcu_read_lock` and `rcu_read_unlock` to mark critical section.
+-  `quiescent state` called - `grace period` which provides window for the update.
+
+
+
+Steps towards initialization
+
+- disable preemptiveness of the kernel with `preempt_disable` which updates `__preempt_count` which is per-CPU variable.
+- above operations has to be done with the optimization `barrier` setup. 
+- In the processors with x86_64 architecture independent memory access operations can be performed in any order. That's why we need the opportunity to point compiler and processor on compliance of order. This mechanism is **memory barrier**.
+- memory barrier optiomization insures that order or execution of functions will be maintained.
+- Disable IRQs
+- Initialize ID management framework with `idr_init_cache`.  The `idr` library is used in a various places in the linux kernel to manage assigning integer IDs to objects and looking up objects by id.   
+
+Call `rcu_init`.
+
+
+
+RCU utilizaes softirqs
+
+```C
+open_softirq(RCU_SOFTIRQ, rcu_process_callbacks);
+```
+
+
+
+#### Other initialization 
+
+- `trace_init` to initialize perf tracing and other profiling with `profile_init`
+- `console_init` to start terminals
+- debugging memory init `debug_objects_mem_init`
+- kernel memory leak `kmemleak_init` 
+- per CPU page sets `setup_per_cpu_pageset`
+- NUMA policy  `numa_policy_init`
+- Scheduling time `sched_clock_init`
+- PID `pidmap_init`
+- kernel private VM areas `anon_vma_init`
+- initialization of the ACPI with the `acpi_early_init`.
+
+
+
+#### prepare to spawn `init` process
+
+- To spawn a process we need to have `thread info` struct which need a CPU cache allocated by `thread_info_cache_init`  called in  kernel/fork.c
+
+  ```C
+  thread_info_cache = kmem_cache_create("thread_info", THREAD_SIZE,
+                                                THREAD_SIZE, 0, NULL);
+  ```
+
+  
+
+- Then need a cache for `credentials` like uid, did .. etc. which done with `cred_init` in kernel/cred.c
+
+  ```C
+  cred_jar = kmem_cache_create("cred_jar", sizeof(struct cred),
+                              0, SLAB_HWCACHE_ALIGN|SLAB_PANIC, NULL);
+  ```
+
+
+
+##### Next function is **`fork_init`**
+
+- Then `fork_init` allocates cache for the `task_struct` in kernel/fork.c.
+
+  ```C
+  task_struct_cachep =
+                  kmem_cache_create("task_struct", sizeof(struct task_struct), ARCH_MIN_TASKALIGN, SLAB_PANIC | SLAB_NOTRACK, NULL);
+  ```
+
+- In the end of the `fork_init` function we initialize signal handler. We built `init_task` in the past which is an instance of `task_struct` structure which will get populated with these handlers and `rlimits`.
+
+-  `proc_caches_init` is next which will initialize following caches
+
+  - sighand_cachep - manage information about installed signal handlers;
+  - signal_cachep - manage information about process signal descriptor;
+  - files_cachep - manage information about opened files;
+  - fs_cachep -  manage filesystem information.
+
+- After this `proc_caches_init` will allocate SLAB cache for the `mm_struct` structures:
+
+  ```C
+  mm_cachep = kmem_cache_create("mm_struct",
+                           sizeof(struct mm_struct), ARCH_MIN_MMSTRUCT_ALIGN,
+                           SLAB_HWCACHE_ALIGN|SLAB_PANIC|SLAB_NOTRACK, NULL);
+  ```
+
+- `called buffer_init`  which is defined in the `fs/buffer.c` source code file and allocate cache for the `buffer_head`. The `buffer_head` is a special structure which defined in the include`/linux/buffer_head.h` and used for managing buffers. 
+
+- `vfs_caches_init`  to initiate inode and dcache location.
+
+
+
+##### create procfs with `proc_root_init`
+
+ This will also call `proc_sys_init` to create `/proc/sys`
+
+
+
+**THIS IS THE END OF THE start_kernel**
+
+
+
+#### After start_kernel
+
+- `rest_init` gets called which does RCU startup and CPU wake up.
+
+- Then it creates two kernel threads `kernel_init` and `kthreadd`
+
+  ```C
+  kernel_thread(kernel_init, NULL, CLONE_FS);  /* PID 1 */
+  pid = kernel_thread(kthreadd, NULL, CLONE_FS | CLONE_FILES);  /* PID 2 */
+  ```
+
+- `kernel_thread` is defined in kernel/fork.c
+
+- Then `rest_init` creates idle loop for CPU to run on them when they are idle with `init_idle_bootup_task(current);` . `cpu_idle_loop` is the  ```PID 0``` and part of the idle scheduling class.
+
+
+
+##### call to `init`
+
+then `do_basic_setup` get called which 
+
+-  reinitialize cpuset to the active CPUs
+- initialize the khelper - which is a kernel thread which used for making calls out to userspace from within the kernel
+-  initialize tmpfs
+-  initialize drivers subsystem,
+- Enable the user-mode helper workqueue
+- Post-early call of the initcalls
+
+
+
+Then it opens `init` process file descritors attached to `/dev/console`
+
+```C
+if (sys_open((const char __user *) "/dev/console", O_RDWR, 0) < 0)
+  pr_err("Warning: unable to open an initial console.\n");
+(void) sys_dup(0);
+(void) sys_dup(0);
+```
+
+ 
+
+Once that is done it looks for `init` executable 
+
+- pointed by `rdinit=` kernel param 
+
+- if failed to find then look for `init=` kernel param
+
+- if failed to find then execute following 
+
+  ```C
+  if (!try_to_run_init_process("/sbin/init") ||
+      !try_to_run_init_process("/etc/init") ||
+      !try_to_run_init_process("/bin/init") ||
+      !try_to_run_init_process("/bin/sh"))
+  return 0;
+  ```
+
+
+
+
+
+
+
+ 
+
+
+
 
 
 
