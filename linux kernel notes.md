@@ -1476,6 +1476,139 @@ And refer this [link](https://0xax.gitbooks.io/linux-insides/content/Misc/linux-
 
 
 
+- - The address space in `x86_64` is `2^64` wide, but it's too large, that's why a smaller address space is used, only 48-bits wide. So we have a situation where the physical address space is limited to 48 bits, but addressing still performs with 64 bit pointers. How is this problem solved? Look at this diagram:
+
+    ```
+    0xffffffffffffffff  +-----------+
+                        |           |
+                        |           | Kernelspace
+                        |           |
+    0xffff800000000000  +-----------+
+                        |           |
+                        |           |
+                        |   hole    |
+                        |           |
+                        |           |
+    0x00007fffffffffff  +-----------+
+                        |           |
+                        |           |  Userspace
+                        |           |
+    0x0000000000000000  +-----------+
+    ```
+
+    Memor areas fitted in above structure
+
+    ```
+    0000000000000000 - 00007fffffffffff (=47 bits) user space, different per mm
+    hole caused by [48:63] sign extension
+    ffff800000000000 - ffff87ffffffffff (=43 bits) guard hole, reserved for hypervisor
+    ffff880000000000 - ffffc7ffffffffff (=64 TB) direct mapping of all phys. memory
+    ffffc80000000000 - ffffc8ffffffffff (=40 bits) hole
+    ffffc90000000000 - ffffe8ffffffffff (=45 bits) vmalloc/ioremap space
+    ffffe90000000000 - ffffe9ffffffffff (=40 bits) hole
+    ffffea0000000000 - ffffeaffffffffff (=40 bits) virtual memory map (1TB)
+    ... unused hole ...
+    ffffec0000000000 - fffffc0000000000 (=44 bits) kasan shadow memory (16TB)
+    ... unused hole ...
+    ffffff0000000000 - ffffff7fffffffff (=39 bits) %esp fixup stacks
+    ... unused hole ...
+    ffffffff80000000 - ffffffffa0000000 (=512 MB)  kernel text mapping, from phys 0
+    ffffffffa0000000 - ffffffffff5fffff (=1525 MB) module mapping space
+    ffffffffff600000 - ffffffffffdfffff (=8 MB) vsyscalls
+    ffffffffffe00000 - ffffffffffffffff (=2 MB) unused hole
+    ```
+
+- Usually kernel's `.text` starts here with the `CONFIG_PHYSICAL_START` offset. We have seen it in the post about [ELF64](https://github.com/0xAX/linux-insides/blob/master/Theory/ELF.md):
+
+  ```
+    readelf -s vmlinux | grep ffffffff81000000
+       1: ffffffff81000000     0 SECTION LOCAL  DEFAULT    1 
+   65099: ffffffff81000000     0 NOTYPE  GLOBAL DEFAULT    1 _text
+   90766: ffffffff81000000     0 NOTYPE  GLOBAL DEFAULT    1 startup_64
+  ```
+
+  Here I check `vmlinux` with `CONFIG_PHYSICAL_START` is `0x1000000`. So we have the start point of the kernel `.text` - `0xffffffff80000000` and offset - `0x1000000`, the resulted virtual address will be `0xffffffff80000000 + 1000000 = 0xffffffff81000000`.
+
+  After the kernel `.text` region there is the virtual memory region for kernel module, `vsyscalls` and an unused hole of 2 megabytes.
+
+- ELF (Executable and Linkable Format) is a standard file format for executable files, object code, shared libraries and core dumps. An ELF object file consists of the following parts:
+
+  - ELF header - describes the main characteristics of the object file: type, CPU architecture, the virtual address of the entry point, the size and offset of the remaining parts, etc...;
+  - Program header table - lists the available segments and their attributes. Program header table need loaders for placing sections of the file as virtual memory segments;
+  - Section header table - contains the description of the sections.
+
+  Try `readelf -h <bin>` to read header section of the file.
+
+- As we know `__START_KERNEL_map` is a base virtual address of the kernel text, so if we subtract `__START_KERNEL_map`, we will get physical addresses of the `level2_kernel_pgt` and `level2_fixmap_pgt`.
+
+- ![Kernel_Fix_Add_map](images/Kernel_Fix_Add_map.jpg)
+
+
+
+Here is [Kernel virtual map](https://www.kernel.org/doc/Documentation/x86/x86_64/mm.txt)
+
+
+
+- Various IO strategies 
+
+  - IO mapped IO 
+
+    Memory regions and various registers on the device can be seen /proc/ioports.
+
+    ```
+    0000-03af : PCI Bus 0000:00
+      0000-001f : dma1
+      0020-0021 : pic1
+      0040-0043 : timer0
+      0050-0053 : timer1
+      0060-0060 : keyboard
+      0061-0061 : PNP0800:00
+      ...
+      
+    ```
+
+    <Start address>-<length of the region> : <device>
+    Functions used to perform IO 
+
+    - `request_region()`
+    - `struct resource`
+
+  - Memory mapped IO
+    Many devices maps their register and buffers into memory, so writing into that memory will perform IO on the device.
+
+    ```
+    e6000000-eb7fffff : PCI Bus 0000:80
+      eb700000-eb700fff : 0000:80:05.4
+      eb7fc000-eb7fcfff : dmar0
+    eb800000-f0ffffff : PCI Bus 0000:85
+      ee000000-f0afffff : PCI Bus 0000:86
+        ee000000-eeffffff : 0000:86:00.1
+          ee000000-eeffffff : i40e
+        ef000000-efffffff : 0000:86:00.0
+          ef000000-efffffff : i40e
+        f0000000-f03fffff : 0000:86:00.1
+        f0400000-f07fffff : 0000:86:00.0
+        f0800000-f0807fff : 0000:86:00.1
+          f0800000-f0807fff : i40e
+        f0808000-f080ffff : 0000:86:00.0
+          f0808000-f080ffff : i40e
+        f0810000-f090ffff : 0000:86:00.1
+        f0910000-f0a0ffff : 0000:86:00.0
+      f0e00000-f0efffff : PCI Bus 0000:86
+        f0e00000-f0e7ffff : 0000:86:00.1
+        f0e80000-f0efffff : 0000:86:00.0
+      f0f00000-f0f00fff : 0000:85:05.4
+      f0ffc000-f0ffcfff : dmar1
+    ```
+
+    The I/O memory mapping API provides functions to check, request and release memory regions as I/O memory. There are three functions for that:
+
+    ```
+      request_mem_region
+      release_mem_region
+      check_mem_region
+    ```
+
 
 
 
