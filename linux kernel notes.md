@@ -1367,9 +1367,112 @@ Once that is done it looks for `init` executable
 
 
 
+# Cgroups 
+
+- `Cgroups` are special mechanism provided to allocate various system resources.  Defined in the [kernel/cgroup.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/cgroup.c)
+-  Linux kernel provides support for following twelve `control group subsystems`:
+
+  * `cpuset` - assigns individual processor(s) and memory nodes to task(s) in a group;
+  * `cpu` - uses the scheduler to provide cgroup tasks access to the processor resources;
+  * `cpuacct` - generates reports about processor usage by a group;
+  * `io` - sets limit to read/write from/to [block devices](https://en.wikipedia.org/wiki/Device_file);
+  * `memory` - sets limit on memory usage by a task(s) from a group;
+  * `devices` - allows access to devices by a task(s) from a group;
+  * `freezer` - allows to suspend/resume for a task(s) from a group;
+  * `net_cls` - allows to mark network packets from task(s) from a group;
+  * `net_prio` - provides a way to dynamically set the priority of network traffic per network interface for a group;
+  * `perf_event` - provides access to [perf events](https://en.wikipedia.org/wiki/Perf_\(Linux\)) to a group;
+  * `hugetlb` - activates support for [huge pages](https://www.kernel.org/doc/Documentation/vm/hugetlbpage.txt) for a group;
+  * `pid` - sets limit to number of processes in a group.
+-  The `task_struct` does not contain direct link to a `cgroup` but it has connection via `css_set` structure pointer.
 
 
- 
+
+#### Related Proc files and commands
+
+- `/sys/fs/cgroup`
+
+- Adding porocess to cgroup example 
+
+  ```
+  echo $(pidof -x cgroup_test_script.sh) > /sys/fs/cgroup/devices/cgroup_test_group/tasks
+  ```
+
+
+
+# 
+
+
+
+ #Userspace process startup 
+
+Fork clones the parent process's resources and calls `exec` family of functions which gets transalated into single system call
+
+```C
+SYSCALL_DEFINE3(execve,
+		const char __user *, filename,
+		const char __user *const __user *, argv,
+		const char __user *const __user *, envp)
+{
+	return do_execve(getname(filename), argv, envp);
+}
+```
+
+It does many checks like 
+
+- `filename` is valid, 
+- limit of launched processes is not exceed in our system and etc. 
+
+After all of these checks, this function 
+
+- parses our executable file which is represented in [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format, 
+- creates memory descriptor for newly executed executable file and fills it with the appropriate values like area for the stack, heap and etc. 
+- Then `start_thread` function will set up one new process by 
+  - by setting up new value to [segment registers](https://en.wikipedia.org/wiki/X86_memory_segmentation)
+  - and program execution address.
+  - context switch is achieved and control passed to userspace.
+
+
+
+#### In user space
+
+
+
+![image of the callgraph for all the routines involved in program startup on linux](images/callgraph_binary_execution.png)
+
+
+
+
+
+This execution happens via glibc glue code which helps to reach to `main()` of your function.
+
+You see various sections of this diagram in `objdump -d` output of any binary.
+
+These dynamically linked libraries has opportunity to execute their  `init` and `exit` handlers before and after running `main`.
+
+
+
+Reference links 
+
+- [Linux x86 Program Start Up](http://dbp-consulting.com/tutorials/debugging/linuxProgramStartup.html)
+- [Linux inside - program startup](https://0xax.gitbooks.io/linux-insides/content/Misc/linux-misc-4.html)
+
+
+
+# Linker
+
+ The main purpose of the linker is collect/handle the code and data of each object file, turning it into the final executable file or library. In this post we will try to go through all aspects of this process.
+
+
+
+Check output for following commmands 
+
+- `nm -A main.o`
+- `objdump -S -r main.o`
+- ` readelf -d factorial`
+- `/usr/lib/gcc/x86_64-linux-gnu/4.9/collect2 --version`
+
+And refer this [link](https://0xax.gitbooks.io/linux-insides/content/Misc/linux-misc-3.html) 
 
 
 

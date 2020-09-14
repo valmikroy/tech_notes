@@ -86,4 +86,59 @@
 
   - Lmbench various micro benchmarking
 
-  - 
+  - The address space in `x86_64` is `2^64` wide, but it's too large, that's why a smaller address space is used, only 48-bits wide. So we have a situation where the physical address space is limited to 48 bits, but addressing still performs with 64 bit pointers. How is this problem solved? Look at this diagram:
+  
+    ```
+    0xffffffffffffffff  +-----------+
+                        |           |
+                        |           | Kernelspace
+                        |           |
+    0xffff800000000000  +-----------+
+                        |           |
+                        |           |
+                        |   hole    |
+                        |           |
+                        |           |
+    0x00007fffffffffff  +-----------+
+                        |           |
+                        |           |  Userspace
+                        |           |
+    0x0000000000000000  +-----------+
+    ```
+  
+    Memor areas fitted in above structure
+  
+    ```
+    0000000000000000 - 00007fffffffffff (=47 bits) user space, different per mm
+    hole caused by [48:63] sign extension
+    ffff800000000000 - ffff87ffffffffff (=43 bits) guard hole, reserved for hypervisor
+    ffff880000000000 - ffffc7ffffffffff (=64 TB) direct mapping of all phys. memory
+    ffffc80000000000 - ffffc8ffffffffff (=40 bits) hole
+    ffffc90000000000 - ffffe8ffffffffff (=45 bits) vmalloc/ioremap space
+    ffffe90000000000 - ffffe9ffffffffff (=40 bits) hole
+    ffffea0000000000 - ffffeaffffffffff (=40 bits) virtual memory map (1TB)
+    ... unused hole ...
+    ffffec0000000000 - fffffc0000000000 (=44 bits) kasan shadow memory (16TB)
+    ... unused hole ...
+    ffffff0000000000 - ffffff7fffffffff (=39 bits) %esp fixup stacks
+    ... unused hole ...
+    ffffffff80000000 - ffffffffa0000000 (=512 MB)  kernel text mapping, from phys 0
+    ffffffffa0000000 - ffffffffff5fffff (=1525 MB) module mapping space
+    ffffffffff600000 - ffffffffffdfffff (=8 MB) vsyscalls
+    ffffffffffe00000 - ffffffffffffffff (=2 MB) unused hole
+    ```
+  
+- Usually kernel's `.text` starts here with the `CONFIG_PHYSICAL_START` offset. We have seen it in the post about [ELF64](https://github.com/0xAX/linux-insides/blob/master/Theory/ELF.md):
+
+  ```
+    readelf -s vmlinux | grep ffffffff81000000
+       1: ffffffff81000000     0 SECTION LOCAL  DEFAULT    1 
+   65099: ffffffff81000000     0 NOTYPE  GLOBAL DEFAULT    1 _text
+   90766: ffffffff81000000     0 NOTYPE  GLOBAL DEFAULT    1 startup_64
+  ```
+
+  Here I check `vmlinux` with `CONFIG_PHYSICAL_START` is `0x1000000`. So we have the start point of the kernel `.text` - `0xffffffff80000000` and offset - `0x1000000`, the resulted virtual address will be `0xffffffff80000000 + 1000000 = 0xffffffff81000000`.
+
+  After the kernel `.text` region there is the virtual memory region for kernel module, `vsyscalls` and an unused hole of 2 megabytes.
+
+- 
