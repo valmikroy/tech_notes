@@ -86,5 +86,30 @@
 
   - Lmbench various micro benchmarking
 
+  - Vsyscall or fast syscalls do not appear in `strace` output.
+  
+  - Where can I get sourcode for glibc 
+  
+    ```
+    git clone git://sourceware.org/git/glibc.git
+    ```
+  
+  - Generate core dump by setting up `ulimit -c unlimited` before crashing application. You can generate core file with `kill -s SIGSEGV $$`. Core file is nothing but the memory map of all instructions which get executed. 
+  
+  - Use Core file to analyze the dump using gdb , reference links [gdb example](https://gist.github.com/jarun/ea47cc31f1b482d5586138472139d090) and [debugging containers](https://sysdig.com/blog/troubleshooting-containers/).
+  
+  - `debug.exception-trace` sysctl setting enables segfault messages.
+  
+  - Various legacy vsyscall execution mechanism , boot-time or compile-time params
+  
+    - CONFIG_LEGACY_VSYSCALL_NATIVE. - dangerous one - the vsyscall page contains native machine code that just calls the respective time()/getcpu()/… system calls and can be directly executed from a process.
+    - CONFIG_LEGACY_VSYSCALL_EMULATE - generates page fault to move to kernel space - which will execute the page fault handler and then emulate the system call on behalf of the process, rather than letting it execute native machine code from the *vsyscall* page itself. 
+    - CONFIG_LEGACY_VSYSCALL_NONE - calling process is sent a *SIGSEGV* signal
+  
     
   
+    
+  
+    
+  
+    
