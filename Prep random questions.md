@@ -178,7 +178,44 @@ The reason caches are effective is because computer code generally exhibits two 
   ![img](images/Dir_block_structure.png)
 
 - Hard links to dir will cause loops
+
 - Following symlink is an atomic operation - that is the reason we used it in our deployment mechanism. How it can be used for deployments? https://temochka.com/blog/posts/2017/02/17/atomic-symlinks.html
+
 - each entry in dir has a fix size so it grows baed of number of entries in it.
-- 
+
+- Stream IO with multiple byte read for each charater which is getting used for Unicodes.
+
+- Buffering for file descritors 
+
+  - Files are fully buffered 
+  - STDIN and STDOUT are line buffered  (only when connected to tty device)
+  - STDERR is unbuffered
+
+- | **Storage Class**   | **Declaration**         | **Storage**   | **Default Initial Value** | **Scope**                                                    | **Lifetime**              |
+  | ------------------- | ----------------------- | ------------- | ------------------------- | ------------------------------------------------------------ | ------------------------- |
+  | **auto**            | Inside a function/block | Memory        | Unpredictable             | Within the function/block                                    | Within the function/block |
+  | **register**        | Inside a function/block | CPU Registers | Garbage                   | Within the function/block                                    | Within the function/block |
+  | **extern**          | Outside all functions   | Memory        | Zero                      | Entire the file and other files where the variable is declared as extern | program runtime           |
+  | **Static (local)**  | Inside a function/block | Memory        | Zero                      | Within the function/block                                    | program runtime           |
+  | **Static (global)** | Outside all functions   | Memory        | Zero                      | Global                                                       | program runtime           |
+
+- `fsync()` systemcall to flush everything from memory to disk. `fflush` does something similar for streaming IO.
+
+- File table entry 
+
+  - stores the file offset. 
+  - Each file table entry gets created upon creation of new File Descriptor. 
+  - `fork()` and `dup()` will point to same file table entry through different file descriptors.
+
+  ![linux-file-description](images/linux-file-description.png)
+
+- [Standard IO library functions](https://en.wikipedia.org/wiki/C_file_input/output) which abstract underlying POSIX related details of the OS.
+
+- user `nobody` - special user who can access files which are readable or writable for the world.
+
+- `utmp` gives you existing user logins on the terminal, `wtmp` will provide historic information. `btmp` keeps track of failed logins.
+
+-  
+
+
 
