@@ -106,10 +106,79 @@
     - CONFIG_LEGACY_VSYSCALL_EMULATE - generates page fault to move to kernel space - which will execute the page fault handler and then emulate the system call on behalf of the process, rather than letting it execute native machine code from the *vsyscall* page itself. 
     - CONFIG_LEGACY_VSYSCALL_NONE - calling process is sent a *SIGSEGV* signal
   
-    
+- Pipes 
+  - They are the connectors where output of a process passes through kernel space buffer and fed into another process.
+  - pipe buffer size `/proc/sys/fs/pipe-max-size`
   
-    
+- [Binary and Hex basic page](https://www.bottomupcs.com/chapter01.xhtml)
   
-    
+- [Numbers](https://www.bottomupcs.com/types.xhtml)
   
+  - `char`  8bit (1 byte), `int` short 16bit (2 bytes), `int` long 32bit (4 bytes), int long long 64bit (8 bytes)
+  - one's complement and two's complement.
+  - In scientific notation the value `123.45` might commonly be represented as `1.2345x102`. We call `1.2345` the *mantissa* or *significand*, `10` is the *radix* and `2` is the *exponent*.
+  
+- CPU 
+  - CPU loads data from the memory to registers and then does computation on those stored data. 
+  
+  - CPU keeps a track of next instruction and based on guesswork it modifies the pointer to next instruction significanly. This calls branching.
+  
+  - Executing a single instruction consists of a particular cycle of events
+    - Fetch : get the instruction from memory into the processor.
+    - Decode : internally decode what it has to do (in this case add).
+    - Execute : take the values from the registers, actually add them together
+    - Store : store the result back into another register. You might also see the term retiring the instruction.
     
+  - Inside CPUure 3.2. Inside the CPU
+  
+    ![img](images/inside_CPU.png)
+  - To occupy all the above CPU components to raise efficiency, it uses pipelining. Sometimes pipeline can get flushed if branch predication fails. This is parallelized execution of various blocks called superscalar architecture.
+  - Sorting of the data reduces branch predictions.
+  - RISC has single instruction doing simple things vs CISC has single instruction doing multiple things. RISC compiler who generates code need to be smarter at the same time chip design for RISC becomes much simpler.
+
+
+- Memory
+The CPU can only directly fetch instructions and data from cache memory, located directly on the processor chip. Cache memory must be loaded in from the main system memory.
+
+The reason caches are effective is because computer code generally exhibits two forms of locality
+- Spatial locality suggests that data within blocks is likely to be accessed together.
+- Temporal locality suggests that data that was used recently will likely be used again shortly.
+
+**Cache replacement strategy** 
+
+![img](images/Memory_Caching_Strategy.png)
+
+- Direct - only one place to place memory block, this forces other block in the same slot to be replaced.
+- 4 - Way set associative - 4 possible places for given memory block, whichever is free can be utilized without eviction.
+- Fully associative - put block anywhere, this might need some LRU managment.
+
+
+
+- Type of files 
+  - Regualr file
+  - Directory file
+  - Block Speical file
+  - Character file 
+  - FIFO
+  - Socket
+  - Symbolic link
+  - With new posix standard following are represented as files
+    - Message queues
+    - Semaphore 
+    - Shared memory object
+- User ID of the process - it has real user id , saved user id and effective user id. This is a provision for working with set guid.
+- Dir `+x` bit allows to `cd` in the directory. Dir `+r` will give you permission to read dir with `ls`. `+w` will allow you to create a file.
+- user id of the file will be effective user ID of the process and group ID would be the same as process unless directory setGID bit is set.
+- `umask` invert of the mask.
+- `ls` command shows modification time in the output.
+- `read` returns `0` for any holed area in the file.
+- Files 
+  ![img](images/files_block_struct.png)
+- Dirs
+  ![img](images/Dir_block_structure.png)
+
+- Hard links to dir will cause loops
+- Following symlink is an atomic operation - that is the reason we used it in our deployment mechanism. How it can be used for deployments? https://temochka.com/blog/posts/2017/02/17/atomic-symlinks.html
+- each entry in dir has a fix size so it grows baed of number of entries in it.
+- 
+
