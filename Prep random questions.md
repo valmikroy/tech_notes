@@ -96,7 +96,7 @@
   
   - Generate core dump by setting up `ulimit -c unlimited` before crashing application. You can generate core file with `kill -s SIGSEGV $$`. Core file is nothing but the memory map of all instructions which get executed. 
   
-  - Use Core file to analyze the dump using gdb , reference links [gdb example](https://gist.github.com/jarun/ea47cc31f1b482d5586138472139d090) and [debugging containers](https://sysdig.com/blog/troubleshooting-containers/).
+  - Use Core file to analyze the dump using gdb , reference links [gdb example](https://gist.github.com/jarun/ea47cc31f1b482d5586138472139d090) and [debugging containers](https://sysdig.com/blog/troubleshooting-containers/). More [examples](https://www.dedoimedo.com/computers/gdb.html)
   
   - `debug.exception-trace` sysctl setting enables segfault messages.
   
@@ -199,6 +199,12 @@ The reason caches are effective is because computer code generally exhibits two 
   | **Static (local)**  | Inside a function/block | Memory        | Zero                      | Within the function/block                                    | program runtime           |
   | **Static (global)** | Outside all functions   | Memory        | Zero                      | Global                                                       | program runtime           |
 
+- Variables which are 
+
+  - global and static are stored in the data segment. 
+  - And constants are stored in the code segment.
+  - Variables which are not initialized but statically declared as a part dynamically loaded libraries are stored in `bss` area. 
+
 - `fsync()` systemcall to flush everything from memory to disk. `fflush` does something similar for streaming IO.
 
 - File table entry 
@@ -215,7 +221,29 @@ The reason caches are effective is because computer code generally exhibits two 
 
 - `utmp` gives you existing user logins on the terminal, `wtmp` will provide historic information. `btmp` keeps track of failed logins.
 
--  
+- Environment variable is and pointer to the pointers
+
+  ![Figure 7.5 Environment consisting of five C character strings](images/process_env_vars.png)
+
+`NULL` pointer below is to extend that variable list. Initial pointer is stored on top of the stack.
+
+![Figure 7.5 Environment consisting of five C character strings](images/process_env_var_stored.png)
 
 
 
+- `setjmp` and `longjmp` to jump between functions. They clean all stack frames between functions while jumping. Effect of such jumps on various type of variables also depends on gcc optimization flags.
+- `getrlimit` and `setrlimit` syscalls used to setup ulimit while spawning.  The `prlimit` allows to set and read the resource limits of a process specified by PID.  `struct rlimit` gets used to track various [limits](https://0xax.gitbooks.io/linux-insides/content/SysCall/linux-syscall-6.html). 
+- `vfork()` gurantees that child will run before parent. This has some security issues.
+- `exec()` file reads first line for `#!` and accordingly spawn the interprater of the script.
+- `SIGCHLD` gets delivered to parent which get caught by `wait` functions to avoid zombies.
+- Hash  `#`  has to be universal line commenter for every interprater language because the way `exec()` calls  processes shebang.
+- Shell session 
+  ![Figure 9.9 Summary of job control features with foreground and background jobs, and terminal driver](images/Process_control_shell_session.png)
+
+- Signals 
+  - they get generated 
+  - they get delivered to the process
+  - they stay pending till they get caught, most of them defaulted to be ignored.
+  - process catches signal with the setup handlers.
+  - signals can be blocked by process and some of the real time operating system they can be queued.
+- looks like SIGNAL interrupted system calls never get restarted in linux by default.
