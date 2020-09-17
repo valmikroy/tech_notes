@@ -216,7 +216,7 @@ kbstack - stack structure in kernel
 Kbpgtbl - kernel page table size 
 
 Kbnonpg - Amount of non-file backed pages in kilobytes mapped into userspace page tables. 
- 
+
 Above scenario in sar outputs was happening due watermark exhaustion, 
 ![vm_watermark](images/vm_watermarks.png)
 
@@ -306,6 +306,7 @@ Network connection handling is done by following system calls
   ```
 
   
+
 This section also combines notes from TCP/IP illustrated 
 
 
@@ -313,6 +314,7 @@ This section also combines notes from TCP/IP illustrated
 
 ### DNS
 
+- DNS port 53
 - DNS query is either UDP or TCP based depedning on the response size.
 - `.` in the end indicates that name is complete and nothing more need to be appended. It is max 255 chars availble in the FQDN and 63 max chars per label.
 - DNS does various kind of caching which can be controlled with TTL, it can also do negative caching means caching of the unsuccessful FQDN resolution. Some of the local caching services like NSCD (nssswitch.conf) can be used to improve performance.
@@ -433,6 +435,11 @@ All above is based on the simple TCP implementation and it gets more complicated
 
 
 
+- TCP BBR works with TCP pacing which is a technique which make packet transmission on each socket less bursty by using qdiscs.
+- TCP BBR is dependent on the RTT more than the packet loss.
+
+
+
 ### UDP
 
 
@@ -493,5 +500,5 @@ All above is based on the simple TCP implementation and it gets more complicated
 ![IP Packet](images/IP_packet.png)
 
 
-    
+​    
 

@@ -9,7 +9,7 @@ I am using ubuntu based system on which `perf` comes as a part of package, in re
 - Install `perf`
 
   ```
-  sudo apt-get install   linux-tools-`uname -r`
+  sudo apt-get install   linux-tools-`uname -r` -y
   ```
 
 - Install kernel debug symbols on Ubuntu 
@@ -45,7 +45,6 @@ I am using ubuntu based system on which `perf` comes as a part of package, in re
   echo 0 | sudo tee /proc/sys/kernel/kptr_restrict
   ```
 
-  
 - install BCC tools in the mix 
 ```
 # ubuntu focal 
@@ -71,10 +70,23 @@ Perf can act  on exported kernel function symbols which you can find in `/proc/k
 Julia Evan's blog post about [tracing](https://jvns.ca/blog/2017/07/05/linux-tracing-systems/) does a good categorization in digramatic fashion about linux tracing systems. There are following type of tracing support 
 
 -  kprobes is mechanism which injects assembly code in its runtime image and allow you to fetch various kinds of data. This is lightwight and can allow you to do production monitoring. You need to do some code reading to create a safe probing mechanism. Looks for simple kprobe injection [script.](https://github.com/brendangregg/perf-tools/blob/master/kernel/kprobe)
+   - kprobe executes `do_init3` which causes SIGTRAP whose handler is setup by kprobe handler function.
+   - There are some performance implication due to the way interrupt handler get executed and needs serialization in this execution through single mutex on SMP systems.
 - tracepoint is the mechanism where provision for tracing of certain function of kernel is already written and it need to be externally activiated. Here is a [script](https://github.com/brendangregg/perf-tools/blob/master/kernel/functrace) in simialr fashion. In kernel, you can find trace events defined by  `TRACE_EVENT` macro. This also relies on ring buffer size which can be overrrun with too much of data.
-- uprobe is simialr to kprobes but for userspace functions, especially `malloc()` in libc.
+- uprobe is simialr to kprobes but for userspace functions, especially `malloc()` in libc. There uprobe event [tracing](https://www.kernel.org/doc/html/latest/trace/uprobetracer.html) or another [example](https://opensource.com/article/17/7/dynamic-tracing-linux-user-and-kernel-space)
 - UDST has something to do with DTrace and userspace probing which I did not explore, apparently this is possible with python and other scripting languages.
 - LTTNG never even bothered to look up 
+
+
+
+Kernel probing and tracing difference 
+
+- kprobes/uprobes are dynamic and you can extract various values for the function, any function for that matter. 
+- tracers have a static defination on what information they can publish
+
+
+
+
 
  
 
@@ -105,6 +117,30 @@ sudo perf trace -e   kmem:kmalloc
 # number of counts 
 sudo perf stat -a -e   kmem:kmalloc -I 1000
 ```
+
+
+
+Perf is a tool which allows you to sample particualr event and collect realted data while collecting a sample.
+
+The perf_events interface allows two modes to express the sampling period:
+
+- number of occurrences of the event (period)
+- average rate of samples/sec (frequency) - this is a default set to 1000Hz, or 1000 samples/sec
+
+
+
+#### Various types of tracer apart from just functions 
+
+```
+~/sys/kernel/debug/tracing#: cat available_tracers
+blk mmiotrace function_graph wakeup_rt wakeup function nop
+```
+
+- `mmiotrace` - PCIe bus IO map
+- `wakeup_rt` - CPU activity tracing 
+- `blk` - block device tracing
+
+
 
 
 

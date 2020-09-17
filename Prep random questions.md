@@ -232,11 +232,17 @@ The reason caches are effective is because computer code generally exhibits two 
 
 
 - `setjmp` and `longjmp` to jump between functions. They clean all stack frames between functions while jumping. Effect of such jumps on various type of variables also depends on gcc optimization flags.
+
 - `getrlimit` and `setrlimit` syscalls used to setup ulimit while spawning.  The `prlimit` allows to set and read the resource limits of a process specified by PID.  `struct rlimit` gets used to track various [limits](https://0xax.gitbooks.io/linux-insides/content/SysCall/linux-syscall-6.html). 
+
 - `vfork()` gurantees that child will run before parent. This has some security issues.
+
 - `exec()` file reads first line for `#!` and accordingly spawn the interprater of the script.
+
 - `SIGCHLD` gets delivered to parent which get caught by `wait` functions to avoid zombies.
+
 - Hash  `#`  has to be universal line commenter for every interprater language because the way `exec()` calls  processes shebang.
+
 - Shell session 
   ![Figure 9.9 Summary of job control features with foreground and background jobs, and terminal driver](images/Process_control_shell_session.png)
 
@@ -246,4 +252,30 @@ The reason caches are effective is because computer code generally exhibits two 
   - they stay pending till they get caught, most of them defaulted to be ignored.
   - process catches signal with the setup handlers.
   - signals can be blocked by process and some of the real time operating system they can be queued.
+  
 - looks like SIGNAL interrupted system calls never get restarted in linux by default.
+
+- `/proc/stat` used by `vmstat` or `dstat`.
+
+- Interrupts - why we have more than 255 interrupts on x86 architecture? That is because of IO-APIC , read this 
+
+- debug symbol table maps compiled binary instructions to corrosponding variable functions or lines in the source code.  
+
+- [TCP BBR experiment](https://medium.com/@atoonk/tcp-bbr-exploring-tcp-congestion-control-84c9c11dc3a9#:~:text=Bottleneck%20Bandwidth%20and%20Round%2Dtrip,developed%20at%20Google%20in%202016.&text=BBR%20tackles%20this%20with%20a,to%20determine%20the%20sending%20rate.) by creating delay and packet loss
+
+  ```
+  # introduce latency 
+  tc qdisc replace dev enp0s20f0 root netem latency 70ms
+  # introduce latency and pkt drop
+  tc qdisc replace dev enp0s20f0 root netem loss 1.5% latency 70ms
+  
+  # start BBR
+  sysctl -w net.ipv4.tcp_congestion_control=bbr
+  
+  
+  # socket stats
+  ss -tni
+  ```
+
+  ![Image for post](images/TCP+BBR+compare.png)
+
