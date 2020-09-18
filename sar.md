@@ -460,7 +460,7 @@ All above is based on the simple TCP implementation and it gets more complicated
 
 - IP determines the need for the fragmentation based on availbile information of the path towards destination. IP starts a timer on the arrival of first fragment to assemble packet within that time. ![UDP fragmentation](images/UDP_IPv4_fragmentation.png)
 
-- UDP application has to do PMTU discovery by using ICMP to avoid fragmentation. Maximum size of UDP is limited by max IPv4 packet size which is 16bit (65,535 bytes).
+- UDP application has to do PMTU discovery by using ICMP to avoid fragmentation. Maximum size of UDP is limited by max IPv4 packet size which is 16bit (65,535 bytes) (same for TCP).
 
 - UDP packet do not have destination IP, so server receiving UDP packet need to fetch this infromation from the  IP layer. This is true for DNS server.
 
@@ -499,6 +499,246 @@ All above is based on the simple TCP implementation and it gets more complicated
 
 ![IP Packet](images/IP_packet.png)
 
+### Linux kernel packet traverse    
 
-​    
+![linux_kernel_nw_traverse](images/linux_kernel_nw_traverse.jpg)
+
+
+
+
+
+
+
+
+
+#### TLS
+
+TLS performace [compare by Intel](https://software.intel.com/content/www/us/en/develop/articles/improving-openssl-performance.html)
+
+Kernel level TLS performance aka [ktls](https://www.kernel.org/doc/html/latest/networking/tls-offload.html)
+
+
+
+#### CPU
+
+Turbo 
+
+```
+$ sudo cpupower frequency-info
+analyzing CPU 0:
+  driver: intel_pstate
+  CPUs which run at the same hardware frequency: 0
+  CPUs which need to have their frequency coordinated by software: 0
+  maximum transition latency:  Cannot determine or is not supported.
+  hardware limits: 1.20 GHz - 3.10 GHz
+  available cpufreq governors: performance powersave
+  current policy: frequency should be within 1.20 GHz and 3.10 GHz.
+                  The governor "powersave" may decide which speed to use
+                  within this range.
+  current CPU frequency: Unable to call hardware
+  current CPU frequency: 1.20 GHz (asserted by call to kernel)
+  boost state support:
+    Supported: yes
+    Active: yes
+```
+
+Monitor CPU freq shift
+
+```
+turbostat --debug
+```
+
+Learn more about [Busy Polling](https://netdevconf.info/2.1/papers/BusyPollingNextGen.pdf) for network sockets.
+
+Reduce effect of CPU power management on 
+
+```shell
+# kernel cmdline options
+
+
+#https://gist.github.com/Brainiarc7/8dfd6bb189b8e6769bb5817421aec6d1
+processor.max_cstates=1 
+intel_idle.max_cstate=0
+
+#https://www.kernel.org/doc/html/v5.0/admin-guide/pm/cpuidle.html
+idle=poll 
+```
+
+CPU affinity and negative effect on `runqlat`
+
+
+
+#### Memory 
+
+`vm.zone_reclaim_mode`
+
+NUMA commands 
+
+```shell
+numactl --interleave=all
+numactl --hardware
+numastat -n -c
+numastat -m -c
+```
+
+FB platform [single NUMA](https://engineering.fb.com/data-center-engineering/facebook-s-new-front-end-server-design-delivers-on-performance-without-sucking-up-power/)
+
+
+
+NUMA related kernel activities
+
+```shell
+perf stat -e sched:sched_stick_numa,sched:sched_move_numa,sched:sched_swap_numa,migrate:mm_migrate_pages,minor-faults -p PID
+```
+
+
+
+
+
+#### PCI
+
+PCIE troubleshooting [101](https://intrepid.warped.com/~scotte/OldBlogEntries/web/index-5.html)
+
+Disable PCIe power management 
+
+```
+# kernel commandline
+pcie_aspm=off
+```
+
+![img](images/pcie-table.png)source: https://en.wikipedia.org/wiki/PCI_Express#History_and_revisions
+
+[PCIe tunig guide](https://community.mellanox.com/docs/DOC-2496)
+
+
+
+#### NIC
+
+
+
+
+
+
+
+##### BQL
+
+This is accomplished by adding a layer which enables and disables queuing to the driver queue (qdiscs) based on calculating the minimum buffer size required to avoid starvation under the current system conditions.
+
+This creates back pressure on the qdiscs.
+
+ The BQL algorithm is self tuning so you probably don’t need to mess with this too much.  But you can tune it with values in dir `/sys/devices/pci0000:00/0000:00:14.0/net/eth0/queues/tx-0/byte_queue_limits`
+
+
+
+##### Ethtool and softstat
+
+To find pkt drop in device driver space
+
+```shell
+ethtool -S eth0 | egrep 'miss|over|drop|lost|fifo'
+```
+
+Look for CPU squeezes and collisions in OS softirq space with `/proc/net/softnet_stat` Tune time and packet budget.
+
+
+
+Enable Coalescing on NIC to reduce interrupt volume 
+
+```shell
+ethtool -c eth0
+```
+
+Tune RSS and RFS (needs CPU affinity)
+
+
+
+##### OS network stack
+
+- Collect system-wide TCP metrics via `/proc/net/snmp` and `/proc/net/netstat`.
+- Aggregate per-connection metrics obtained either from `ss -n --extended --info`, or from calling `getsockopt(TCP_INFO)`/`getsockopt(TCP_CC_INFO)` inside your webserver.
+- [tcptrace](https://linux.die.net/man/1/tcptrace)(1)’es of sampled TCP flows.
+- Analyze RUM metrics from the app/browser.
+
+
+
+##### TCP tunes
+
+![img](images/linux-tcp-stack.png)
+
+
+
+- Pacing - Fair queing with qdisc 
+- TSO - TCP Segment Offload - `net.ipv4.tcp_min_tso_segs`.
+- TSQ - TCP small queues - `net.ipv4.tcp_limit_output_bytes`
+-  Congension control - BBR (througput remains higher during packet loss )
+-  [TLP](https://lwn.net/Articles/542642/) and [RACK](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=eb9fae328faff9807a4ab5c1834b19f34dd155d4) to work on ACK processing and loss detection.
+
+
+
+
+
+Some tcp optimization 
+
+- `net.ipv4.tcp_notsent_lowat`   apprently useful for HTTP2
+- `net.ipv4.tcp_tw_recycle=1` DO NOT USE - broken in kernel
+- `net.ipv4.tcp_timestamps=0` DO NOT USE - timestamp allows various SACK and window scaling functionlity which we will loose.
+
+
+
+As for sysctls that you should be using:
+
+- `net.ipv4.tcp_slow_start_after_idle=0`—the main problem with slowstart after idle is that “idle” is defined as one RTO, which is too small.
+- `net.ipv4.tcp_mtu_probing=1`—[useful if there are ICMP blackholes between you and your clients](https://blog.cloudflare.com/ip-fragmentation-is-broken/) (most likely there are).
+- `net.ipv4.tcp_rmem`, `net.ipv4.tcp_wmem`—should be tuned to fit BDP, just don’t forget that [bigger isn’t always better](https://blog.cloudflare.com/the-story-of-one-latency-spike/).
+- `echo 2 > /sys/module/tcp_cubic/parameters/hystart_detect`—if you are using fq+cubic, this [might help with tcp_cubic exiting the slow-start too early](https://groups.google.com/forum/#!topic/bbr-dev/g1tS1HUcymE).
+
+It also worth noting that there is an RFC draft (though a bit inactive) from the author of curl, Daniel Stenberg, named [TCP Tuning for HTTP](https://github.com/bagder/I-D/blob/gh-pages/httpbis-tcp/draft.md), that tries to aggregate all system tunings that may be beneficial to HTTP in a single place.
+
+
+
+#### Flamegraph and perf optimization 
+
+Check performance of following library calls
+
+-  Zlib - compression 
+
+- Malloc
+
+- PCRE
+
+  ```
+  funclatency /srv/nginx-bazel/sbin/nginx:ngx_http_regex_exec -u
+  ```
+
+
+
+#### TLS
+
+Reference 
+
+Most of the optimizations I’ll be mentioning are covered in the [High Performance Browser Networking](https://hpbn.co/)’s “ [Optimizing for TLS](https://hpbn.co/transport-layer-security-tls/#optimizing-for-tls)” section and [Making HTTPS Fast(er)](https://www.youtube.com/watch?v=iHxD-G0YjiU) talk at nginx.conf 2014. 
+
+Tunings mentioned in this part will affect both performance and security of your web server, if unsure, please consult with [Mozilla’s Server Side TLS Guide](https://wiki.mozilla.org/Security/Server_Side_TLS) and/or your Security Team.
+
+- TLS connection resume without handshake - TLS session tickets or TLS session cache
+- OSCP stapling 
+- TLS record size 
+
+![TLS_record_size](images/TLS_record_size.jpg)
+
+
+
+20KB of application payload will get divided into 1400 bytes of ~15 TCP segments which are more than TCP congestion window. 
+
+
+
+[Overall reference post](https://dropbox.tech/infrastructure/optimizing-web-servers-for-high-throughput-and-low-latency)
+
+
+
+
+
+
+
+
 

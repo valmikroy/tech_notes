@@ -279,3 +279,5 @@ The reason caches are effective is because computer code generally exhibits two 
 
   ![Image for post](images/TCP+BBR+compare.png)
 
+- Blocked process in `vmstat` output are the one waiting on blocked IO and running or runnable process are shown in the other column. It is coming from `/proc/stats` populated [here](https://github.com/torvalds/linux/blob/63bef48fd6c9d3f1ba4f0e23b4da1e007db6a3c0/fs/proc/stat.c#L201)
+
