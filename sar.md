@@ -736,7 +736,57 @@ Tunings mentioned in this part will affect both performance and security of your
 
 
 
+# Troubleshooting
 
+USE - Utilization - Saturation - Errors
+
+| resource           | type        | metric                                                       |
+| ------------------ | ----------- | ------------------------------------------------------------ |
+| CPU                | utilization | CPU utilization (either per-CPU or a system-wide average),   |
+| CPU                | saturation  | run-queue length or scheduler latency(aka                    |
+| Memory capacity    | utilization | available free memory (system-wide)                          |
+| Memory capacity    | saturation  | anonymous paging or thread swapping (maybe "page scanning" too) |
+| Network interface  | utilization | RX/TX throughput / max bandwidth,                            |
+| Storage device I/O | utilization | device busy percent                                          |
+| Storage device I/O | saturation  | wait queue length                                            |
+| Storage device I/O | errors      | device errors ("soft", "hard", ...)                          |
+
+
+
+
+
+Scheduler latency 
+
+```shell
+perf sched record -a sleep 6
+perf sched latency -s max
+```
+
+[Run queue latency](http://www.brendangregg.com/blog/2016-10-08/linux-bcc-runqlat.html) 
+
+```shell
+runqlat
+```
+
+
+
+
+
+
+
+Now for some harder combinations (again, try to think about these first!):
+
+
+
+| resource            | type        | metric                                                       |
+| ------------------- | ----------- | ------------------------------------------------------------ |
+| CPU                 | errors      | eg, correctable CPU cache ECC events or faulted CPUs (if the OS+HW supports that) |
+| Memory capacity     | errors      | eg, failed malloc()s (although this is usually due to virtual memory exhaustion, not physical) |
+| Network             | saturation  | saturation related NIC or OS events; eg "dropped", "overruns" |
+| Storage controller  | utilization | depends on the controller; it may have a max IOPS or throughput that can be checked vs current activity |
+| CPU interconnect    | utilization | per port throughput / max bandwidth (CPU performance counters) |
+| Memory interconnect | saturation  | memory stall cycles, high CPI (CPU performance counters)     |
+| I/O interconnect    | utilization | bus throughput / max bandwidth (performance counters may exist on your HW; eg, Intel "uncore" events) |
 
 
 
