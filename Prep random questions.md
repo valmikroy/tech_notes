@@ -281,3 +281,125 @@ The reason caches are effective is because computer code generally exhibits two 
 
 - Blocked process in `vmstat` output are the one waiting on blocked IO and running or runnable process are shown in the other column. It is coming from `/proc/stats` populated [here](https://github.com/torvalds/linux/blob/63bef48fd6c9d3f1ba4f0e23b4da1e007db6a3c0/fs/proc/stat.c#L201)
 
+- `lsattr` shows extended file attributes, some of them are provided by the file system and immutable by `chattr`. Here is an article with [description](http://www.linuxintheshell.com/2013/04/23/episode-028-extended-attributes-lsattr-and-chattr/) 
+
+- The **inode** (index node) is a data structure in a Unix-style file system that describes a file-system object such as a file or a directory. Each **inode** stores the attributes and disk block locations of the object's data. There are direct pointers (usually for smaller files) but then there are indirect pointers which are for larger files which helps to keep **inode** structure compact.
+
+- Background processes , can be setup by `&` and when they try to do anything with STDIN or STDOUT then they are stopped by SIGTTIN or SIGTTOUT signal.
+
+- Tmux is a server and every connected terminal is a client which get served by its session.
+
+- Process state codes
+
+  ```shell
+  PROCESS STATE CODES
+         Here are the different values that the s, stat and state output
+         specifiers (header "STAT" or "S") will display to describe the state of
+         a process.
+         D    Uninterruptible sleep (usually IO)
+         R    Running or runnable (on run queue)
+         S    Interruptible sleep (waiting for an event to complete)
+         T    Stopped, either by a job control signal or because it is being
+  	    traced.
+         X    dead (should never be seen)
+         Z    Defunct ("zombie") process, terminated but not reaped by its
+  	    parent.
+  
+         For BSD formats and when the stat keyword is used, additional
+         characters may be displayed:
+         <    high-priority (not nice to other users)
+         N    low-priority (nice to other users)
+         L    has pages locked into memory (for real-time and custom IO)
+         s    is a session leader
+         l    is multi-threaded (using CLONE_THREAD, like NPTL pthreads do)
+         +    is in the foreground process group
+  ```
+
+- `forcefsck` empty file to force check on next reboot.
+
+- Knowing process ID , you can go through processes' `/proc/PID/` dir to know activities like listening sockets and many others.
+
+- TLS and its assymetric and symmetric handshake
+
+  - The client contacts the server using a secure URL (HTTPS…).
+  - The server sends the client its certificate and public key. 
+  - The client verifies this with a Trusted Root Certification Authority to ensure the certificate is legitimate. There are chain of signatures on the server certificate by various authorities (like verisign). Those signatures can be verified by their respective public keys, these publics comes as a part of standard openssl package or browser bundle. 
+  - The client and server negotiate the strongest type of encryption that each can support, the supported symmetric cipher. Client generates the secret for the symmentric cipher.
+  - The client encrypts a session (secret) key with the server’s public key, and sends it back to the server.
+  - The server decrypts the client communication with its private key, and the session is established.
+  - The session key (symmetric encryption) is now used to encrypt and decrypt data transmitted between the client and server.
+  - This whole things take atleast 110ms (on top of TCP handshake of 50ms)
+  - When a key exchange uses Ephemeral Diffie-Hellman a temporary DH key is generated for every connection and thus the same key is never used twice. This enables Forward Secrecy (FS), which means that if the long-term private key of the server gets leaked, past communication is still secure.
+
+- maximum length of arguments for a new process `getconf ARG_MAX` . In practice, subtract existing enviornment size with 
+
+  ```shell
+  echo $(( $(getconf ARG_MAX) - $(env | wc -c) ))
+  ```
+
+  But then also keep some room for spwaned shell to modify env variables 
+
+  ```shell
+  expr `getconf ARG_MAX` - `env|wc -c` - `env|wc -l` \* 4 - 2048
+  ```
+
+- NTP
+
+  - Stratum 0 serves as a reference clock and is the most accurate and highest precision time server (e.g., atomic clocks, GPS clocks, and radio clocks.) Stratum 1 servers take their time from Stratum 0 servers and so on up to Stratum 15; Stratum 16 clocks are not synchronized to any source. 
+
+  -  Ideally, it would work to have three or more Stratum 0 or Stratum 1 servers and use those servers as primary masters. 
+
+  - ```shell
+    $ ntpq -p
+         remote           refid      st t when poll reach   delay   offset  jitter
+    ==============================================================================
+     0.ubuntu.pool.n .POOL.          16 p    -   64    0    0.000    0.000   0.000
+     1.ubuntu.pool.n .POOL.          16 p    -   64    0    0.000    0.000   0.000
+     2.ubuntu.pool.n .POOL.          16 p    -   64    0    0.000    0.000   0.000
+     3.ubuntu.pool.n .POOL.          16 p    -   64    0    0.000    0.000   0.000
+     ntp.ubuntu.com  .POOL.          16 p    -   64    0    0.000    0.000   0.000
+    *ntp3.junkemailf 216.218.254.202  2 u   53   64   37    1.893    1.029   0.703
+    +time.cloudflare 10.98.8.8        3 u   48   64   37   25.829   -0.308   0.787
+    -44.190.6.254    23.131.160.7     3 u   51   64   37    2.410   -1.374   0.760
+    +time.cloudflare 10.98.8.8        3 u   53   64   37   25.297   -0.014   0.783
+    -50-205-244-112- 50.205.244.27    2 u   48   64   37   52.013    0.720   0.760
+    -ntp1.wiktel.com .PPS.            1 u   51   64   37   72.899   -2.498   0.713
+    #dns2.fuedo.de   192.53.103.104   2 u   44   64   35  159.522    4.682   0.738
+    
+    
+    $ timedatectl status
+                          Local time: Wed 2020-09-23 18:08:49 UTC
+                      Universal time: Wed 2020-09-23 18:08:49 UTC
+                            RTC time: Wed 2020-09-23 18:08:50
+                           Time zone: Etc/UTC (UTC, +0000)
+           System clock synchronized: yes
+    systemd-timesyncd.service active: yes
+                     RTC in local TZ: no
+    ```
+
+  - The reach column contains the results of the most recent eight NTP updates. If all eight are successful, this field will read 377. This number is in octal, so eight successes in octal will be represented by 377.
+
+- Soft limits (designated via -aS) are boundaries that, if breached, cause a SIGX signal to be sent to the running process indicating it must lower its consumption immediately. 
+
+  Hard limits (designated via -aH) on the other hand, are final upper bounds for each respective limit type. These values are the absolute maximum that a process can reach before the operating system issues a SIGKILL signal to the process. This signal cannot be caught and will immediately terminate the process.
+
+- `ulimit` vs `cgroups`
+
+  -  `cgroups` are considered for allocate resources among groups of tasks, while `ulimit` only works on a process level. For example, `ulimits` are getting inherited from parent but those are indepdent from the parent's limits accounting. `cgroups` accounting is applied for group or processes.
+
+- Object vs Block storage.
+
+- The Linux Unified Key Setup (LUKS) is a disk encryption specification.
+
+- Close socket without killing process
+
+  ```
+  - Find the offending process: netstat -np
+  - Find the socket file descriptor: lsof -np $PID
+  - Debug the process: gdb -p $PID
+  - Close the socket: call close($FD)
+  - Close the debugger: quit
+  ```
+
+- 
+
