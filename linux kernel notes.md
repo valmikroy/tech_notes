@@ -616,6 +616,10 @@ checkout Privillage level in RPL
 
 
 
+![4-level paging](/Users/abhsawan/git/tech_notes/images/4_level_paging.png)
+
+
+
 #### Decompress the kernel
 
 -  from the `64-bit` entry point - `startup_64` which is located in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) 
