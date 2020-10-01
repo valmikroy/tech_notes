@@ -401,5 +401,15 @@ The reason caches are effective is because computer code generally exhibits two 
   - Close the debugger: quit
   ```
 
-- 
+- INT 80 for system call execution.
+
+- Kernel per-map space for page tables to break cicular depedency to map 
+
+- Implementation of KASLR and KPTI patching. KPTI moves most of the kernel pages out of the process mapping and use Process context ID to reduce performance reduction.  Individual TLB entries can be flushed using PC-ID. 
+
+- Every process has its own page table, this pointers gets loaded into CR3 register. 
+
+-  Time Stamp Counter (TSC) - this is on die clock
+
+- RAM+swap to be overcommitted, 
 
