@@ -435,7 +435,7 @@ All above is based on the simple TCP implementation and it gets more complicated
 
 
 
-- TCP BBR works with TCP pacing which is a technique which make packet transmission on each socket less bursty by using qdiscs.
+- TCP BBR works with TCP pacing which is a technique which makes packet transmission on each socket less bursty by using qdiscs.
 - TCP BBR is dependent on the RTT more than the packet loss.
 
 

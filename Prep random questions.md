@@ -231,6 +231,11 @@ The reason caches are effective is because computer code generally exhibits two 
 
 
 
+More accurate representation considering kernel space is here
+![proc_kern_virt_mem_map](images/proc_kern_virt_mem_map.png)
+
+
+
 - `setjmp` and `longjmp` to jump between functions. They clean all stack frames between functions while jumping. Effect of such jumps on various type of variables also depends on gcc optimization flags.
 
 - `getrlimit` and `setrlimit` syscalls used to setup ulimit while spawning.  The `prlimit` allows to set and read the resource limits of a process specified by PID.  `struct rlimit` gets used to track various [limits](https://0xax.gitbooks.io/linux-insides/content/SysCall/linux-syscall-6.html). 
@@ -246,7 +251,14 @@ The reason caches are effective is because computer code generally exhibits two 
 - Shell session 
   ![Figure 9.9 Summary of job control features with foreground and background jobs, and terminal driver](images/Process_control_shell_session.png)
 
+- summarize `nohup`, `disown` and `&`:
+  
+  - `&` puts the job in the background, that is, makes it block on attempting to read input, and makes the shell not wait for its completion.
+  - `disown` removes the process from the shell's job control, but it still leaves it connected to the terminal. One of the results is that the shell won't send it a `SIGHUP`. Obviously, it can only be applied to background jobs, because you cannot enter it when a foreground job is running.
+  - `nohup` disconnects the process from the terminal, redirects its output to `nohup.out` and shields it from `SIGHUP`. One of the effects (the naming one) is that the process won't receive any sent `SIGHUP`. It is completely independent from job control and could in principle be used also for foreground jobs (although that's not very useful).
+  
 - Signals 
+  
   - they get generated 
   - they get delivered to the process
   - they stay pending till they get caught, most of them defaulted to be ignored.

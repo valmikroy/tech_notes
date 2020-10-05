@@ -157,9 +157,7 @@ Now, processes are sorted based on the `vruntime` in the form of red-black balan
 
 
 
-IO bound tasks get removed from the above RB tree with the `dequeue_entity` while getting marked as a NONRUNNABLE. Task marks itself as sleeping and puts itself on the wait queue. , calls `schedule()` to select next process to run. When such tasks wakes up and get added back into the run queue, it will have vruntime setup to 0 which makes it most runnable task.
-
-
+IO bound tasks get removed from the above RB tree with the `dequeue_entity` while getting marked as a NONRUNNABLE. Task marks itself as sleeping and puts itself on the **wait queue**. , calls `schedule()` to select next process to run. When such tasks wakes up and get added back into the run queue, it will have vruntime setup to 0 which makes it most runnable task.
 
 
 
@@ -168,16 +166,37 @@ Preemption of the task can only happen when it is not holding any locks and kern
 
 
 - WatchDog and migration has real time priority.
+- How sleep() systemcall is scheduled on CPUs? Answers is that there is seperate `timerqueue` managed by `__hrtimer_run_queues` which runs on softirq to check the expired timers. 
+
+
+
+#### Perf command for sched
+
+```shell
+ sudo perf sched record -- sleep 1
+ sudo perf sched latency
+
+ -----------------------------------------------------------------------------------------------------------------
+  Task                  |   Runtime ms  | Switches | Average delay ms | Maximum delay ms | Maximum delay at       |
+ -----------------------------------------------------------------------------------------------------------------
+  perf:(2)              |      1.759 ms |        4 | avg:    0.037 ms | max:    0.126 ms | max at:    234.604618 s
+  gmain:814             |      0.128 ms |        2 | avg:    0.016 ms | max:    0.017 ms | max at:    234.691133 s
+  kworker/0:1-eve:7     |      0.047 ms |        2 | avg:    0.009 ms | max:    0.012 ms | max at:    235.366863 s
+  rcu_sched:11          |      0.013 ms |        4 | avg:    0.006 ms | max:    0.009 ms | max at:    235.606850 s
+  sleep:3313            |      0.982 ms |        4 | avg:    0.005 ms | max:    0.010 ms | max at:    235.606672 s
+  ksoftirqd/0:10        |      0.016 ms |        2 | avg:    0.005 ms | max:    0.006 ms | max at:    234.606816 s
+ -----------------------------------------------------------------------------------------------------------------
+  TOTAL:                |      2.945 ms |       18 |
+ ---------------------------------------------------
+```
+
+
+
+
 
 
 
 #### Exercise
-
-- where IO bound processes sleeps? the work queue ? How such queue is implemented. How such process get awaken.
-
-- `vruntime` ??
-
-- Scheduling related ebpf exercises
 
 - confirm SCHD_FIFO behaviour
 
@@ -222,6 +241,12 @@ This section of the code carried out by following
 Softirqs are used generally for urgent execution like netowrk traffic handling. Various other work actions implemented through softirq can be found `/proc/softirqs`
 
 
+
+
+
+#### do_int3() - TRAP
+
+This is a debug interrupt which is used in [kprobe implementation](https://vjordan.info/log/fpga/how-linux-kprobes-works.html).
 
 
 
