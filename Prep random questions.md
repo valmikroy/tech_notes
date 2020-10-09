@@ -66,6 +66,7 @@
       - pgsteal/s - stealing page from the page cache itself as free memory is not availble 
       - pgpgin/s and pgpgout/s - number pages bround in the memory from the disk and pushed out to the disk
     - sar -B and sar -S shows how paging is different that swapping.
+    - various memory zones - https://utcc.utoronto.ca/~cks/space/blog/linux/KernelMemoryZones
 
   - Vmstat with `-s` option can give you quick understand of the state of system.
 
