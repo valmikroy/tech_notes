@@ -425,3 +425,11 @@ More accurate representation considering kernel space is here
 
 - RAM+swap to be overcommitted, 
 
+- ```
+  $ while true; do mkdir x; cd x; done
+  ```
+
+  This script will create a directory structure that is as deep as possible. Each subdirectory "x" will create a dentry (directory entry) that is pinned in non-reclaimable kernel memory. Such a script can potentially consume all available memory before filesystem quotas or other filesystem limits kick in, and, as a consequence, other processes will not receive service from the kernel because kernel memory has been exhausted. (One can monitor the amount of kernel memory being consumed by the above script via the `dentry` entry in `/proc/slabinfo`.)
+
+- 
+
