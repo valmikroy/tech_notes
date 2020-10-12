@@ -14,6 +14,45 @@ Controlling of process is a very old problem, it has been tackled
 
 
 
+Old resource limiting was with `ulimit` and `setrlimit`  which worked only on individual processes and not on the group.
+
+
+
+Net_CLS and Net_Prio
+
+- `net_prio` get used for a queue selection in the qdisc layer. This priority can be set at the socket level with `SO_PRIORITY` . A new net_prio cgroup inherits the parent's configuration. doc](https://www.kernel.org/doc/Documentation/cgroup-v1/net_prio.txt)
+- `net_cl` marks the packet with the id which can be used in traffic shaping with `tc` and `iptables`  . This class id is attached to each network packet. There is some issue with the inheritance of these marking in the child cgourp which is I am unclear of. [doc](https://www.kernel.org/doc/Documentation/cgroup-v1/net_cls.txt)
+
+
+
+
+
+Devices cgroup
+
+- permissions for read/write to particualr device by the process and its children 
+- /dev/random - fed with entrophy  in linux 
+- /dev/net/tune - /dev/kvm and /dev/dri 
+
+
+
+Freeze cgroup
+
+This is a little bit like sending `SIGSTOP` or `SIGCONT` to one of the process groups. 
+
+Freezing is arranged by sending a **virtual signal to each process**, since the signal handling code does check if the cgroup has been marked as frozen and acts accordingly. In order to make sure that no process escapes the freeze, **freezer requests notification** when a process forks, so it can catch newly created processes — it is the only subsystem that does this.
+
+
+
+`cgroup_is_descendant` function which simply walks up the` ->parent` links until it finds a match or the root. Networking subsystem do not use this function for performance reason.
+
+
+
+ 
+
+
+
+
+
 
 
 
@@ -79,17 +118,7 @@ BlockIO
 
 
 
-Net_CLS and Net_Prio
-
-- you have to use tc to shape traffic coming from particualr cgroup.
-
-
-
-Devices cgroup
-
-- permissions for read/write to particualr device 
-- /dev/random - fed with entrophy  in linux 
-- /dev/net/tune - /dev/kvm and /dev/dri 
+- 
 
 
 
