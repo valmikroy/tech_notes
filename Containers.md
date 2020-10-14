@@ -47,8 +47,9 @@ Freezing is arranged by sending a **virtual signal to each process**, since the 
 
 
 
+### CPU
  
-CPUset cgroup 
+#### CPUset cgroup 
 This allows you to create CPU and memory grouping based on its NUMA topology. This avoids bouncing of pages and other stuff.
 
 Here are key files
@@ -65,7 +66,7 @@ sudo mkdir /sys/fs/cgroup/cpuset/set1
 Populate values in the new set directory to attach process to that set.
 
 
-CPUacct 
+#### CPUacct 
 Accounting purpose.
 
 ```
@@ -74,10 +75,33 @@ mkdir /sys/fs/cgroup/cpuacct/set1
 # add process in this set
 ```
 
+#### CPU
+`struct sched_entity` keeps a track of scheduling information by proportional weights and virtul runtime. Cloning of this scheduling structure hierarchy is refered by `res_counter` to keep the track of every processes runtime without locking.
+
+This strucutre then get used to put a quota on group's runtime.
+
+Quota restrictions are often pushed down the hierarchy while accounting data is often propagated up a parallel hierarchy.
+
+
+### Memory 
+- For record keeping on various resources, kernel uses `res_counter` declared in  `include/linux/res_counter.h` and implemented in `kernel/res_counter.c`. 
+
+- In case of memory there are four counters, three for userspace and kernel space, sum of total memory + swap usage. For `hugetlb` there is a single counter tracking huge pages.
+
+- `res_counter` uses spinlock to manage concurrency and every process will have pointer to its parent's strucutre. When update happens you have to take a spinlock which is expensive. So spinlock guarded counter gets updated by 32 pages and excess quota gets tracked.
 
 
 
+### BlockIO
+- `blockio` alllows to apply various scheduling policies like `throttle` and `cfq-iosched`.
+- it uses non-reusable internal 64bit for various tracking `blkcg` along with its container ID.
 
+this cgroup can
+- throttle bytes per second ``
+- follow weight of device `blkio.weight*`
+- allocate disk time `blkio.time`
+- quota on sectors `blkio.sectors`
+- quota on various timings `blkio.io_service_time`, `blkio.io_wait_time` and many other timings.
 
 
 
