@@ -48,6 +48,32 @@ Freezing is arranged by sending a **virtual signal to each process**, since the 
 
 
  
+CPUset cgroup 
+This allows you to create CPU and memory grouping based on its NUMA topology. This avoids bouncing of pages and other stuff.
+
+Here are key files
+```
+/sys/fs/cgroup/cpuset/cpuset.cpus
+/sys/fs/cgroup/cpuset/cpuset.mems
+/sys/fs/cgroup/cpuset/cgroup.procs
+/sys/fs/cgroup/cpuset/tasks
+
+
+# create a new set
+sudo mkdir /sys/fs/cgroup/cpuset/set1
+```
+Populate values in the new set directory to attach process to that set.
+
+
+CPUacct 
+Accounting purpose.
+
+```
+ls /sys/fs/cgroup/cpuacct/
+mkdir /sys/fs/cgroup/cpuacct/set1
+# add process in this set
+```
+
 
 
 
@@ -100,13 +126,6 @@ CPU cgroups
 - you can not set limit 
 
 
-
-CPUset cgroup 
-
-- pin groups to specific CPU(s)
-- great for NUMA systems 
-- avoid process bouncing between CPUs
-- read more
 
 
 
