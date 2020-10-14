@@ -438,4 +438,6 @@ More accurate representation considering kernel space is here
 
   Entropy is the measure of the random numbers available from /dev/urandom, and if you run out, you can’t make SSL connections. To check the status of your server’s entropy, just run the above.
 
-  
+  ***Linux Entropy Lifecycle***
+
+  ![User-added image](images/linux_entropy.png)
