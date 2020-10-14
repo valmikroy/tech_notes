@@ -1,4 +1,4 @@
-# Control Groups aka GCgroups
+# Control Groups aka CGroups
 
 What are the containers
 
@@ -102,6 +102,16 @@ this cgroup can
 - allocate disk time `blkio.time`
 - quota on sectors `blkio.sectors`
 - quota on various timings `blkio.io_service_time`, `blkio.io_wait_time` and many other timings.
+
+
+
+### Other notes on CGroups
+- `systemd` creates in own process hierarchy under `/sys/fs/cgroup/systemd`
+- there is the one unified hierarchy on the system with all cgroups.\
+- `net_cl` just mark the packets but their administrative control managed by `tc` 
+- but here is a problem, if memory page `mmapped` then modified and flushed to the disk. It generates memory IO and Block IO in two different contexts. Which part of cgroup this should get accounted to what granularity.
+- 
+
 
 
 
