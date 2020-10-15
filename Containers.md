@@ -110,7 +110,7 @@ this cgroup can
 - there is the one unified hierarchy on the system with all cgroups.\
 - `net_cl` just mark the packets but their administrative control managed by `tc` 
 - but here is a problem, if memory page `mmapped` then modified and flushed to the disk. It generates memory IO and Block IO in two different contexts. Which part of cgroup this should get accounted to what granularity.
-- 
+-  cgroups are groups of threads, rather than groups of processes. This means that when a process is added to a cgroup, each individual thread must be added separately, and it is necessary to keep the list of threads stable while they are being removed from one cgroup and added to another.
 
 
 
