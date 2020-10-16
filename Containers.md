@@ -48,7 +48,7 @@ Freezing is arranged by sending a **virtual signal to each process**, since the 
 
 
 ### CPU
- 
+
 #### CPUset cgroup 
 This allows you to create CPU and memory grouping based on its NUMA topology. This avoids bouncing of pages and other stuff.
 
@@ -111,6 +111,18 @@ this cgroup can
 - `net_cl` just mark the packets but their administrative control managed by `tc` 
 - but here is a problem, if memory page `mmapped` then modified and flushed to the disk. It generates memory IO and Block IO in two different contexts. Which part of cgroup this should get accounted to what granularity.
 -  cgroups are groups of threads, rather than groups of processes. This means that when a process is added to a cgroup, each individual thread must be added separately, and it is necessary to keep the list of threads stable while they are being removed from one cgroup and added to another.
+-  Each thread's cgroup is defined by `struct css_set` and these cgroups are matchined to different hierarchy through a hash table. This was threads or process can move around between cgroups. `cgrp_cset_link` is the hashtable which keeps track of all cgroups to its hierarchy.
+-  cgroupv2 has unified hierarchy which encapsualte all the cgroups underneath.  CGroup controllers are getting used to apply policies to the trees of cgroups.
+
+
+
+
+
+Use of cgroup
+
+- you can slice a machine resources with the cgroup.
+- cgroupv2 provides unified hierarchy where resource comes under tree of the cgroup and applied with `subtree_contol` file.
+- [Presentation](https://chrisdown.name/talks/cgroupv2/cgroupv2-fosdem.pdf) which compares cgroupv1 to v2
 
 
 

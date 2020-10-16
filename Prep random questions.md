@@ -442,9 +442,10 @@ More accurate representation considering kernel space is here
 
   ![User-added image](images/linux_entropy.png)
   
-  
  - Linux Network Traffic Control
     - The NTC mechanism is managed by the tc program. This tool allows a "queueing discipline" (or "qdisc") to be attached to each network interface. Some qdiscs are "classful" and these can have other qdiscs attached beneath them, one for each "class" of packet. If any of these secondary qdiscs are also classful, a further level is possible, and so on. 
     - Each packet will be classified by the various filters into one of the queues in the tree and then will propagate up to the root, possibly being throttled (for example by the Token Bucket Filter, tbf, qdisc) or being competitively scheduled (e.g. by the Stochastic Fair Queueing, sfq, qdisc). Once it reaches the root, it is transmitted.
+    
+- `eventfd` and `inotify` mechanism to create event notification system.
 
 
