@@ -448,4 +448,22 @@ More accurate representation considering kernel space is here
     
 - `eventfd` and `inotify` mechanism to create event notification system.
 
+- ASN number for each organization who does peering on exchanges.
+
+- MAX payload possible 1369 = 1500 - 40 (IPv6) - 20 (TCP) - 10 (Time) - 61 (Max TLS overhead))
+
+- ICMP responded by the kernel, uneven timing in the `ping` response is the sign of busy softirq.
+
+- Busy poll - example https://www.chelsio.com/wp-content/uploads/resources/T5-10Gb-BusyPoll-Chelsio-vs-Intel.pdf
+
+- TCP RACK (Recent ACK) loss recovery uses the notion of time instead of packet sequence (FACK) or counts (dupthresh).
+
+- TCP Tail loss probe - goal is to reduce tail latency of short transactions. it achieves that by  converting retransmission timeouts (RTOs) occuring due to tail losses (losses at end of transactions) into fast recovery.
+
+- `TCP_NOTSENT_LOWAT`  https://lwn.net/Articles/560082/  reduce memory usage on the socket.
+
+- ` /proc/sys/kernel/kptr_restrict` 
+
+
+
 
