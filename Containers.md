@@ -6,6 +6,18 @@ Namspace and Cgroups mismash
 
 
 
+Control Groups provide a mechanism for aggregating/partitioning sets of
+tasks, and all their future children, into hierarchical groups with
+specialized behaviour.
+
+
+
+In CGroupv1 - subsystems has an hierarchy , so each subsystem can have its own hierarchy.
+
+In CGroupv2 - hierarchy get formed first then individual subsystems are attached in the tree.
+
+
+
 Controlling of process is a very old problem, it has been tackled
 
 - Having parent and child process relationship where all children belongs to a parent.
