@@ -329,7 +329,7 @@ Here are two DNS query types
 - There are flags in DNS query which indicates if recursion desired or recursion is availble.
 - DNS has various type of text based compression to optimize the response size.
 - `TC` bit in response is set to switch from UDP to TCP as response got trucated.
-- Every DNS response has TTL value for caching purposes and you can see TTL decreasing between consecutive queries.
+- Every DNS response has TTL value for caching purposes and you can see TTL decreasing between consecutive queries. (BUT tarffic doesn't shift completely :-( )
 -  RRs - Resource Records Types - it is field in response of DNS query indicates category of information returned like A, NS, SOA, CNAME, PTR, MX ... etc.
 - DNS was meant to be a database to fetch various type of information associated with query strings.
 - IXFR and AXFR - Increamental and Full zone tranfer triggered by UDP based notification
@@ -493,6 +493,8 @@ All above is based on the simple TCP implementation and it gets more complicated
 - `connect()` has to be called on the socket for it to know incoming ICMP error messages for sent UDP packets.
 
 - Traceroute got implemented based on ICMP message `TIme Exceeded` which gets generated when TTL count gets exhausted.
+
+- Slowness in ICMP response is something related to softirq.
 
   
 ### IP
@@ -789,6 +791,12 @@ Now for some harder combinations (again, try to think about these first!):
 | I/O interconnect    | utilization | bus throughput / max bandwidth (performance counters may exist on your HW; eg, Intel "uncore" events) |
 
 
+
+
+
+#### IO stat
+
+l[ink](https://www.xaprb.com/blog/2010/01/09/how-linux-iostat-computes-its-results/)
 
 
 

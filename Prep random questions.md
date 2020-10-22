@@ -265,6 +265,7 @@ More accurate representation considering kernel space is here
   - they stay pending till they get caught, most of them defaulted to be ignored.
   - process catches signal with the setup handlers.
   - signals can be blocked by process and some of the real time operating system they can be queued.
+  - Signals are similar to [interrupts](https://en.wikipedia.org/wiki/Interrupt), the difference being that interrupts are mediated by the processor and handled by the [kernel](https://en.wikipedia.org/wiki/Kernel_(operating_system)) while signals are mediated by the kernel (possibly via system calls) and handled by processes. The kernel may pass an interrupt as a signal to the process that caused it (typical examples are [SIGSEGV](https://en.wikipedia.org/wiki/SIGSEGV), [SIGBUS](https://en.wikipedia.org/wiki/SIGBUS), [SIGILL](https://en.wikipedia.org/wiki/Signal_(IPC)#SIGILL) and [SIGFPE](https://en.wikipedia.org/wiki/Signal_(IPC)#SIGFPE)).
   
 - looks like SIGNAL interrupted system calls never get restarted in linux by default.
 
@@ -392,7 +393,7 @@ More accurate representation considering kernel space is here
 
   - The reach column contains the results of the most recent eight NTP updates. If all eight are successful, this field will read 377. This number is in octal, so eight successes in octal will be represented by 377.
 
-- Soft limits (designated via -aS) are boundaries that, if breached, cause a SIGX signal to be sent to the running process indicating it must lower its consumption immediately. 
+- Soft limits (designated via -aS) are boundaries that, if breached, cause a **SIGX** signal to be sent to the running process indicating it must lower its consumption immediately. 
 
   Hard limits (designated via -aH) on the other hand, are final upper bounds for each respective limit type. These values are the absolute maximum that a process can reach before the operating system issues a SIGKILL signal to the process. This signal cannot be caught and will immediately terminate the process.
 
@@ -414,9 +415,9 @@ More accurate representation considering kernel space is here
   - Close the debugger: quit
   ```
 
-- INT 80 for system call execution.
+- **INT 80** for system call execution.
 
-- Kernel per-map space for page tables to break cicular depedency to map 
+- Kernel per-map space for page tables to break cicular depedency to map (???)
 
 - Implementation of KASLR and KPTI patching. KPTI moves most of the kernel pages out of the process mapping and use Process context ID to reduce performance reduction.  Individual TLB entries can be flushed using PC-ID. 
 
