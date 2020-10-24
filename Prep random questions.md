@@ -465,6 +465,32 @@ More accurate representation considering kernel space is here
 
 - ` /proc/sys/kernel/kptr_restrict` 
 
+- Systemd - [rethinking PID 1](http://0pointer.de/blog/projects/systemd.html)
+
+    - Systemd brings up the userspace, we want to do it faster.
+
+    - It does it faster by opening required sockets and then starts server and client processes which are going to use those sockets in parallel. This reduces boottime.
+
+    - Above socket approach it uses for filesystem reads with the help of autofs which allows `open()` call to be blocking until real VFS swaps the mountpoint.
+
+    - Shell scripts are slow and forks a lot - verify that by looking at your PID after first boot login session.
+
+    - CGroups are getting used to do babysitting of the group of processes which is much efficient. Logging is layered on it.
+
+    -  Systemd has units for executation, they all can be depedent on each other. Unit types
+
+        - `service` - actual daemon processes with start and stop options 
+        - `sockets` - various sockets to which above `service` units must be attached.
+        - `device` - device `udev` support.
+        - `mount` - mount points 
+        - `automount` - autofs mounting
+        - `target` - this is logical grouping of various units which can define internel depedencies
+        - `snapshot` - this is for rollbacks and emergency shell creation.
+
+        ![image-20201024140658320](images/systemd_daemon_arch.png)
+
+
+
 
 
 
