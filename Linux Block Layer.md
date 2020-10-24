@@ -67,3 +67,101 @@ Understanding extracted from Neil Brown's LWN [article](https://lwn.net/Articles
 
     
 
+#### IOStat output
+
+l[ink](https://www.xaprb.com/blog/2010/01/09/how-linux-iostat-computes-its-results/) on queuing theory and disk utilization.
+
+Various fields involved related to entries in `/proc/diskstats` 
+
+- Reads completed - Writes completed 
+- Reads merged  - Writes merged
+- Sectors read - Sectors written
+- milliseconds spent reading/writing
+- No. IOs currently in flight
+- milliseconds spent doing IOs
+- weighted number of milliseconds spent doing IOs - this field incremented by the amount time spent while doing each subsection of the IO. 
+
+
+
+From above numbers iostat calculates 
+
+- Throughput - operations per second
+- (R) Concurrency (NOT RPS) - number of operations in flight at this moment. [This is different than arrival rate of requests but this includes requests in queue and the one getting served]
+- (Rt) Latency/Resident Time - Total amount of time it takes for request to complete. This is equivalent of end to end latency like Round Trip Time.
+- (W) Queue time/Wait time - Amount of time spent waiting in the queue.
+- (St) Service time - Time spent after device accept request from the queue till completion of the it doing actual work.
+- (U) Utilization - portion of time device being busy serving requests.
+
+
+
+Additional metrics to consider in general for queing theory 
+
+- (A) Arrival Rate - Frequency at which requests comes in 
+- (Q) Queue Length - Number of requests waiting in a queue on an average. (from above - request which are getting handle by the systems are R - Q)
+
+
+
+Deduction about queuing theory, [article](https://blog.mi.hdm-stuttgart.de/index.php/2019/03/11/queueing-theory-and-practice-or-crash-course-in-queueing/)
+
+- Number of requests in the system (R) = Arrival Rate (A) * Resident Time (Rt)
+
+- Queue Length (Q) = Arrival Rate(A) * Wait time (W)
+
+- Utilization of the system (U) = Arival Rate (A) * Service time (St) [This is busyiness of the system]
+
+- Idealness of the system = 1-U 
+
+- So overall Resident Time(Rt) is directly proportional to Service Time(St) and inversely to idealness of the system   Rt = St/(1-U)
+
+- Put this in number of requests in the system (R) formula
+
+  ```
+  Formula 1
+  Number of requests in the system (R) = Arrival Rate (A) * Resident Time (Rt)
+  
+  Formula 2
+  Resident Time(Rt) = Service Time(St) / (1 - U)
+  
+  Formula 3
+  Utilization of the system (U) = Arival Rate (A) * Service time (St)
+  
+  Formula 4
+  Queue Length (Q) = Arrival Rate(A) * Wait time (W)
+  
+  
+  
+  Substitute Formula2 in the Formula1 and then add Formula3 in it
+  Number of requests in the system (R) = Arrival Rate (A) * Service Time(St) / (1 - U)
+  Number of requests in the system (R) = U/1-U
+  
+  
+  ```
+
+- What above gives us is that number of requests in the system are in ratio of  Utilization/Idealness of the system.
+
+  ```
+  Number of requests in the system (R) = U/1-U
+  ```
+
+- So amount of wait time in the queue (W) is directly related to Service Time (St) multiplied by this ratio of utilization.  
+
+  ```
+  W =  Requests in the system (R) * St =  ( U * St )/1-U 
+  ```
+
+- Average queue length will be  (the formula is less understood)
+
+  ```
+  Q = U^2/1-U
+  ```
+
+- 
+
+
+
+
+
+
+
+
+

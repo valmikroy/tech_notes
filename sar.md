@@ -794,9 +794,5 @@ Now for some harder combinations (again, try to think about these first!):
 
 
 
-#### IO stat
-
-l[ink](https://www.xaprb.com/blog/2010/01/09/how-linux-iostat-computes-its-results/)
-
 
 
