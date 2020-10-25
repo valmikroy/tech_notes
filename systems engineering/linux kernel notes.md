@@ -233,7 +233,7 @@ And here is mapping of VM process space to physical space
 Linux memory page life cycle is defined in following diagram 
 ![page_life_cycle](../images/linux_mem_page_lifecycle.png)
 
-Above digram in certain extent explained in following white boarding session 
+Above digram in certain extent explained in following white boarding session which describes how each file writes through cache using `struct address_space` from `include/linux/fs.h` 
 ![page_life_cycle_explained](../images/page_lifecycle_explained.png)
 
 ## 
@@ -302,10 +302,6 @@ This is a debug interrupt which is used in [kprobe implementation](https://vjord
 
 # Kernel Synchronization Methods
 
-
-
-
-
 ##### Atomic
 
 Atomic data types and operations will safeguard updates and reads inside the kernel.
@@ -318,6 +314,7 @@ Simple synchronization which lock the access for single process who acquires the
 
 - It can not be blocked for long time because spinning processes consumes CPU.
 - this mechanism is much cheaper to implement
+- This disables IRQ to avoid race condition aka Priority Inversion.
 
 
 
