@@ -76,6 +76,9 @@ struct task_struct {
 
 
 
+Rough diagramatic representation on how kernel space proc scheduling happens 
+![linux_prod_sched](/Users/abhisawa/git/lc-practice/tech_notes/images/linux_proc_sched.png)
+
 
 
 
@@ -207,6 +210,35 @@ Preemption of the task can only happen when it is not holding any locks and kern
 - how perf tool works
 
 - Nice time shown in the top output?
+
+
+
+
+
+# Memory
+
+Various digramatic notes about memory 
+
+
+![vm_watermark](/Users/abhisawa/git/lc-practice/tech_notes/images/vm_watermarks.png)
+
+
+
+Here is a white boarding session where how linux kernel maps its physical pages to various data structures.
+![kernel_datastruct](/Users/abhisawa/git/lc-practice/tech_notes/images/phy_mem_to_vm_mem_mapping.png)
+
+And here is mapping of VM process space to physical space
+![proc_vm_to_phy](/Users/abhisawa/git/lc-practice/tech_notes/images/phy_mem_to_vm_mem_mapping_2.png)
+
+Linux memory page life cycle is defined in following diagram 
+![page_life_cycle](/Users/abhisawa/git/lc-practice/tech_notes/images/linux_mem_page_lifecycle.png)
+
+Above digram in certain extent explained in following white boarding session 
+![page_life_cycle_explained](/Users/abhisawa/git/lc-practice/tech_notes/images/page_lifecycle_explained.png)
+
+## 
+
+
 
 
 
@@ -1768,7 +1800,1198 @@ IO-APIC get used for hardware interrupts.
 
 - implementing system calls 
 - context switching
+
+
+
+
+
+
+
+# Linux Block Layer
+
+Understanding extracted from Neil Brown's LWN [article](https://lwn.net/Articles/736534/) 
+
+![[Block layer diagram]](/Users/abhsawan/git/tech_notes/images/lwn-neil-blocklayer.png)
+
+- Block devices maps to `S_IFBLK` inodes in the kernel which keeps track of major and minor numbers. Internally `i_bdev` field in the inode is mapped to [`struct block_device`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/fs.h?h=v4.13#n415) which maps to `block_device->bd_inode` which involved in actually IO of the device. 
+  (what other type of inodes are there and what about network socket inodes?)
+
+- `block_device->bd_inode` provides page cache implementation defined in  [`fs/block_dev.c`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/block_dev.c?h=v4.13), [`fs/buffer.c`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/buffer.c?h=v4.13).
+
+- Block IO involves `read`, `write` and nowadays `discard`.
+
+- All block devices in Linux are represented by [`struct gendisk`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/genhd.h?h=v4.13#n171) — a "generic disk" which can be associated with multiple block devices which are part of the same physical device with logical partitioning.
+
+- A  data structure ([`struct bio`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/blk_types.h?h=v4.14-rc1#n46)) that carries read and write requests and other control requests, from the `block_device` (previously  `struct gendisk` ).   [`generic_make_request()`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/block/blk-core.c?h=v4.13#n2114) or, equivalently, [`submit_bio()`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/block/blk-core.c?h=v4.13#n2228) get called to submit `bio`. Both of these calls can be blocked for short time.
+
+- Above `submit_bio()` or `generic_make_request()` calls function pointed `make_request_fn()` setup by `blk_queue_make_request()` during registration time.
+
+- Recursion Avoidance
+
+  - `md` used for software RAID and `dm` used for LVM which can stack up the devices.
+  - to avoid recursion in the request due to above stacking `current->bio_list` get attached to  in the [`struct task_struct`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/sched.h?h=v4.13#n519) for the current process. 
+  - there is get split with the help of  [`bio_split()`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/block/bio.c?h=v4.13#n1843) and [`bio_chain()`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/block/bio.c?h=v4.13#n326) functions and then one half of it submitted in time to   [`generic_make_request()`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/block/blk-core.c?h=v4.13#n2114).
+  - `mempool` is used to allocate bios.
+
+- Device queue plugging
+
+  - so it can be more efficient to gather a batch of requests together and submit them as a unit.
+  - plugging happens only to an empty queue. 
+  - plugging happens when `schedule()` is called on the process which gives it enough async opportunity to batch all `bio`s.
+  - With per-process plugging, it is often possible to create a per-process list of `bio`s, and then take the spinlock just once to merge them all into the common queue.
+
+- It also performs some other simple tasks such as updating the `pgpgin` and `pgpgout` statistics in `/proc/vmstat`.
+
+- Merged `bio`s are held togethere as a part of [`struct request`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/blkdev.h?h=v4.13#n134) and this structure sits in the queue defined by  [`struct request_queue`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/blkdev.h?h=v4.13#n386) for each device represeted by  [`struct gendisk`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/genhd.h?h=v4.13#n171). Various part of above structures is exposed in `/sys/block/*/queue/` sysfs directories.
+
+- All these requests are either sit in single queue or multiple queues depedning on support provided by underlying hardware.
+
+- Single queues are designed orginally for spinning disk which had a seek time as queue component of access latency.
+
+- A driver registers a `request_fn()` using `blk_init_queue_node()` and this function is called whenever there are new requests on the queue that can usefully be processed. 
+
+- Single-queue schedulers
+
+  - `noop` - does [simple sorting](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/block/elevator.c?h=v4.13#n371) where never allowing a read to be moved ahead of a write or vice-versa. And do first in first out queuing.
+  - `deadline` - This algorithm tries to put an upper limit on the delay imposed on any request while retaining the possibility of forming large batches.
+  - `cfq` - more complex, It aims to provide fairness between different processes, and, when configured with control groups, between different groups of processes as well. It has queue for each process (and/or group of processes) with timeslice assigned to it like process scheduling queue.
+
+- Technique of `tagging` get used to tag a request before sending it to hardware device and notification is sent back to software layer upon the completion of request.
+
+- Multiple-queue 
+
+  - This benefitted largly when hardware can support multiple read/write/other operations in parallel.
+
+  - two layers of queue exists, one in the software staging layer and another in hardware layer govern by device driver.
+
+  - software layer queues are defined per-CPU and/or per-NUMA node basis. So merging can happen on these levels. Represented by  ([`struct blk_mq_ctx`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/block/blk-mq.h?h=v4.13#n8)) 
+
+  - hardare dispatch queues are allocated by on device driver layer represented by  ([`struct blk_mq_hw_ctx`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/blk-mq.h?h=v4.13#n10)). 
+
+  - In this setup, tagging is used to track the request.
+
+  - The pluggable multi-queue schedulers have [22 entry points](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/elevator.h?h=v4.13#n95), used by insert_requests() and dispatch_request()
+
+  - along with mq-noop and mq-deadline, bfq is Budget Fair Queueing has been introduced.
+
+    
+
+#### IOStat output
+
+l[ink](https://www.xaprb.com/blog/2010/01/09/how-linux-iostat-computes-its-results/) on queuing theory and disk utilization.
+
+Various fields involved related to entries in `/proc/diskstats` 
+
+- Reads completed - Writes completed 
+- Reads merged  - Writes merged
+- Sectors read - Sectors written
+- milliseconds spent reading/writing
+- No. IOs currently in flight
+- milliseconds spent doing IOs
+- weighted number of milliseconds spent doing IOs - this field incremented by the amount time spent while doing each subsection of the IO. 
+
+
+
+From above numbers iostat calculates 
+
+- Throughput - operations per second
+- (R) Concurrency (NOT RPS) - number of operations in flight at this moment. [This is different than arrival rate of requests but this includes requests in queue and the one getting served]
+- (Rt) Latency/Resident Time - Total amount of time it takes for request to complete. This is equivalent of end to end latency like Round Trip Time.
+- (W) Queue time/Wait time - Amount of time spent waiting in the queue.
+- (St) Service time - Time spent after device accept request from the queue till completion of the it doing actual work.
+- (U) Utilization - portion of time device being busy serving requests.
+
+
+
+Additional metrics to consider in general for queing theory 
+
+- (A) Arrival Rate - Frequency at which requests comes in 
+- (Q) Queue Length - Number of requests waiting in a queue on an average. (from above - request which are getting handle by the systems are R - Q)
+
+
+
+Deduction about queuing theory, [article](https://blog.mi.hdm-stuttgart.de/index.php/2019/03/11/queueing-theory-and-practice-or-crash-course-in-queueing/)
+
+- Number of requests in the system (R) = Arrival Rate (A) * Resident Time (Rt)
+
+- Queue Length (Q) = Arrival Rate(A) * Wait time (W)
+
+- Utilization of the system (U) = Arival Rate (A) * Service time (St) [This is busyiness of the system]
+
+- Idealness of the system = 1-U 
+
+- So overall Resident Time(Rt) is directly proportional to Service Time(St) and inversely to idealness of the system   Rt = St/(1-U)
+
+- Put this in number of requests in the system (R) formula
+
+  ```
+  Formula 1
+  Number of requests in the system (R) = Arrival Rate (A) * Resident Time (Rt)
+  
+  Formula 2
+  Resident Time(Rt) = Service Time(St) / (1 - U)
+  
+  Formula 3
+  Utilization of the system (U) = Arival Rate (A) * Service time (St)
+  
+  Formula 4
+  Queue Length (Q) = Arrival Rate(A) * Wait time (W)
+  
+  
+  
+  Substitute Formula2 in the Formula1 and then add Formula3 in it
+  Number of requests in the system (R) = Arrival Rate (A) * Service Time(St) / (1 - U)
+  Number of requests in the system (R) = U/1-U
+  
+  
+  ```
+
+- What above gives us is that number of requests in the system are in ratio of  Utilization/Idealness of the system.
+
+  ```
+  Number of requests in the system (R) = U/1-U
+  ```
+
+- So amount of wait time in the queue (W) is directly related to Service Time (St) multiplied by this ratio of utilization.  
+
+  ```
+  W =  Requests in the system (R) * St =  ( U * St )/1-U 
+  ```
+
+- Average queue length will be  (the formula is less understood)
+
+  ```
+  Q = U^2/1-U
+  ```
+
+  
+
+# Kernel Tracing
+
+Ftrace is setup with debug fs, where you can start tracing functions with following steps
+
+```
+cd /sys/kernel/debug/tracing
+echo function > current_tracer
+echo do_page_fault > set_ftrace_filter
+cat trace
+```
+
+You can achieve same with CLI frontend tool `trace-cmd`
+
+```
+sudo trace-cmd record -p function -l do_page_fault
+sudo trace-cmd report
+```
+
+Tracer has few areas 
+
+- `/sys/kernel/debug/tracing/available_events` 
+  These are various events which happens inside kernel.
+- `/sys/kernel/debug/tracing/available_filter_functions`  (Need to figure out need of this part)
+- `/sys/kernel/debug/tracing/available_tracers` , this is type of tracers
+
+
+
+
+
+
+
+### Kernel Function Tracing 
+
+#### Tracing kernel function
+
+```
+sudo trace-cmd record -p function -l net_rx_action
+
+sudo trace-cmd report
+            sshd-1683  [001]  1071.332350: function:             net_rx_action
+       trace-cmd-2836  [001]  1071.332562: function:             net_rx_action
+          <idle>-0     [001]  1072.201165: function:             net_rx_action
+          <idle>-0     [001]  1072.718105: function:             net_rx_action
+            sshd-1683  [001]  1072.718340: function:             net_rx_action
+       trace-cmd-2836  [001]  1072.718434: function:             net_rx_action
+
+```
+
+This is how you can figure out which process on which CPU is calling the function
+
+You can run same command on given process 
+
+```
+sudo trace-cmd record -p function  -l net_rx_action  -P 1683
+
+sudo trace-cmd report  
+version = 6
+CPU 0 is empty
+cpus=2
+            sshd-1683  [001]  1289.622913: function:             net_rx_action
+            sshd-1683  [001]  1289.623100: function:             net_rx_action
+            sshd-1683  [001]  1289.623346: function:             net_rx_action
+            sshd-1683  [001]  1289.623599: function:             net_rx_action
+            sshd-1683  [001]  1298.013018: function:             net_rx_action
+```
+
+
+
+#### Tracing with function graph 
+
+```
+sudo trace-cmd record -p function_graph   -P 1683
+
+sudo trace-cmd report 
+
+
+
+
+e1000_unmap_and_free_tx_resource.isra.45();
+            sshd-1683  [001]  2005.132080: funcgraph_entry:                   |                                              e1000_unmap_and_free_tx_resource.isra.45() {
+            sshd-1683  [001]  2005.132081: funcgraph_entry:                   |                                                __dev_kfree_skb_any() {
+            sshd-1683  [001]  2005.132081: funcgraph_entry:                   |                                                  consume_skb() {
+            sshd-1683  [001]  2005.132082: funcgraph_entry:                   |                                                    skb_release_all() {
+            sshd-1683  [001]  2005.132082: funcgraph_entry:                   |                                                      skb_release_head_state() {
+            sshd-1683  [001]  2005.132083: funcgraph_entry:                   |                                                        tcp_wfree() {
+            sshd-1683  [001]  2005.132084: funcgraph_entry:        0.105 us   |                                                          sk_free();
+            sshd-1683  [001]  2005.132084: funcgraph_exit:         1.222 us   |                                                        }
+            sshd-1683  [001]  2005.132084: funcgraph_exit:         1.754 us   |                                                      }
+            sshd-1683  [001]  2005.132084: funcgraph_entry:        0.339 us   |                                                      skb_release_data();
+            sshd-1683  [001]  2005.132085: funcgraph_exit:         2.759 us   |                                                    }
+            sshd-1683  [001]  2005.132085: funcgraph_entry:        0.051 us   |                                                    kfree_skbmem();
+            sshd-1683  [001]  2005.132086: funcgraph_exit:         4.029 us   |                                                  }
+            sshd-1683  [001]  2005.132086: funcgraph_exit:         4.385 us   |                                                }
+            sshd-1683  [001]  2005.132086: funcgraph_exit:         5.263 us   |                                              }
+            sshd-1683  [001]  2005.132088: funcgraph_entry:        1.156 us   |                                              e1000_clean_rx_irq();
+            sshd-1683  [001]  2005.132090: funcgraph_entry:        0.283 us   |                                              e1000_update_itr();
+            sshd-1683  [001]  2005.132091: funcgraph_entry:        0.047 us   |                                              e1000_update_itr();
+            sshd-1683  [001]  2005.132091: funcgraph_entry:        0.086 us   |                                              napi_complete_done();
+            sshd-1683  [001]  2005.132110: funcgraph_exit:       + 30.888 us  |                                            }
+            sshd-1683  [001]  2005.132110: funcgraph_exit:       + 33.046 us  |                                          }
+            sshd-1683  [001]  2005.132111: funcgraph_entry:        0.475 us   |                                          rcu_bh_qs();
+            sshd-1683  [001]  2005.132112: funcgraph_entry:        0.038 us   |                                          __local_bh_enable();
+            sshd-1683  [001]  2005.132112: funcgraph_exit:       + 35.683 us  |                                        }
+            sshd-1683  [001]  2005.132112: funcgraph_exit:       + 36.975 us  |                                      }
+            sshd-1683  [001]  2005.132113: funcgraph_exit:       + 37.544 us  |                                    }
+            sshd-1683  [001]  2005.132113: funcgraph_exit:       ! 325.208 us |                                  }
+            sshd-1683  [001]  2005.132113: funcgraph_exit:       ! 325.910 us |                                }
+            sshd-1683  [001]  2005.132113: funcgraph_exit:       ! 326.474 us |                              }
+            sshd-1683  [001]  2005.132114: funcgraph_exit:       ! 327.608 us |                            }
+            sshd-1683  [001]  2005.132114: funcgraph_exit:       ! 329.819 us |                          }
+            sshd-1683  [001]  2005.132114: funcgraph_exit:       ! 335.245 us |                        }
+```
+
+
+
+In above timing information 
+
+- `+` indicates the function lasted longer than 10 microseconds
+- `!` indicates the function lasted longer than 100 microseconds
+- space (or nothing) - the function executed in less than 10 microseconds
+
+
+
+Following command will provide list of kernel functions which can be trace
+
+```
+vagrant@ubuntu-xenial:~$ sudo trace-cmd list -f | grep ^skb_copy
+skb_copy_ubufs
+skb_copy_bits
+skb_copy
+skb_copy_expand
+skb_copy_and_csum_bits
+skb_copy_and_csum_dev
+skb_copy_datagram_iter
+skb_copy_datagram_from_iter
+skb_copy_and_csum_datagram
+skb_copy_and_csum_datagram_msg
+```
+
+
+
+### Kenel Event Tracing
+
+There are events in kernel which does not map to particualr function calls and can be traced differently
+
+Following way you can find events availble for tracing 
+
+```
+vagrant@ubuntu-xenial:~$ sudo cat /sys/kernel/debug/tracing/available_events | grep ^sched
+sched:sched_wake_idle_without_ipi
+sched:sched_swap_numa
+sched:sched_stick_numa
+sched:sched_move_numa
+sched:sched_process_hang
+sched:sched_pi_setprio
+sched:sched_stat_runtime
+sched:sched_stat_blocked
+sched:sched_stat_iowait
+sched:sched_stat_sleep
+sched:sched_stat_wait
+sched:sched_process_exec
+sched:sched_process_fork
+sched:sched_process_wait
+sched:sched_wait_task
+sched:sched_process_exit
+sched:sched_process_free
+sched:sched_migrate_task
+sched:sched_switch
+sched:sched_wakeup_new
+sched:sched_wakeup
+sched:sched_waking
+sched:sched_kthread_stop_ret
+sched:sched_kthread_stop
+```
+
+
+
+You can record kernel events like following 
+
+```
+sudo trace-cmd record -e 'sched:sched_switch'
+
+
+sudo trace-cmd report | head -10
+version = 6
+cpus=2
+       trace-cmd-2931  [001]  3171.776631: sched_switch:         trace-cmd:2931 [120] S ==> trace-cmd:2933 [120]
+       trace-cmd-2932  [000]  3171.776783: sched_switch:         trace-cmd:2932 [120] S ==> swapper/0:0 [120]
+          <idle>-0     [000]  3171.776795: sched_switch:         swapper/0:0 [120] R ==> trace-cmd:2932 [120]
+       trace-cmd-2932  [000]  3171.776798: sched_switch:         trace-cmd:2932 [120] S ==> swapper/0:0 [120]
+       trace-cmd-2933  [001]  3171.776840: sched_switch:         trace-cmd:2933 [120] S ==> swapper/1:0 [120]
+          <idle>-0     [001]  3171.778542: sched_switch:         swapper/1:0 [120] R ==> rcu_sched:7 [120]
+       rcu_sched-7     [001]  3171.778549: sched_switch:         rcu_sched:7 [120] S ==> swapper/1:0 [120]
+          <idle>-0     [001]  3171.782964: sched_switch:         swapper/1:0 [120] R ==> rcu_sched:7 [120]
+
+```
+
+
+
+Like above you can also track migration of `ls` command 
+
+```
+sudo trace-cmd record -e 'sched_wakeup*' -e sched_switch -e 'sched_migrate*' ls
+
+
+vagrant@ubuntu-xenial:~$ sudo trace-cmd report
+version = 6
+cpus=2
+              ls-2952  [001]  3343.171802: sched_wakeup:         migration/1:12 [0] success=1 CPU:001
+              ls-2952  [001]  3343.171813: sched_wakeup:         trace-cmd:2951 [120] success=1 CPU:001
+              ls-2952  [001]  3343.171814: sched_switch:         trace-cmd:2952 [120] R ==> migration/1:12 [0]
+     migration/1-12    [001]  3343.171816: sched_migrate_task:   comm=trace-cmd pid=2952 prio=120 orig_cpu=1 dest_cpu=0
+     migration/1-12    [001]  3343.171823: sched_switch:         migration/1:12 [0] S ==> trace-cmd:2951 [120]
+       trace-cmd-2951  [001]  3343.171829: sched_switch:         trace-cmd:2951 [120] S ==> swapper/1:0 [120]
+          <idle>-0     [000]  3343.171864: sched_switch:         swapper/0:0 [120] R ==> trace-cmd:2952 [120]
+              ls-2952  [000]  3343.171928: sched_switch:         trace-cmd:2952 [120] D|W ==> swapper/0:0 [120]
+          <idle>-0     [001]  3343.171936: sched_wakeup:         trace-cmd:2950 [120] success=1 CPU:001
+          <idle>-0     [001]  3343.171938: sched_switch:         swapper/1:0 [120] R ==> trace-cmd:2950 [120]
+       trace-cmd-2950  [001]  3343.171944: sched_switch:         trace-cmd:2950 [120] S ==> swapper/1:0 [120]
+          <idle>-0     [000]  3343.173992: sched_wakeup:         trace-cmd:2952 [120] success=1 CPU:000
+          <idle>-0     [000]  3343.174009: sched_switch:         swapper/0:0 [120] R ==> trace-cmd:2952 [120]
+              ls-2952  [000]  3343.174227: sched_switch:         ls:2952 [120] D|W ==> swapper/0:0 [120]
+          <idle>-0     [001]  3343.174358: sched_wakeup:         rcu_sched:7 [120] success=1 CPU:001
+          <idle>-0     [001]  3343.174366: sched_switch:         swapper/1:0 [120] R ==> rcu_sched:7 [120]
+       rcu_sched-7     [001]  3343.174372: sched_switch:         rcu_sched:7 [120] S ==> swapper/1:0 [120]
+          <idle>-0     [000]  3343.175044: sched_wakeup:         ls:2952 [120] success=1 CPU:000
+          <idle>-0     [000]  3343.175062: sched_switch:         swapper/0:0 [120] R ==> ls:2952 [120]
+          <idle>-0     [001]  3343.176360: sched_wakeup:         kworker/u4:0:6 [120] success=1 CPU:001
+          <idle>-0     [001]  3343.176365: sched_switch:         swapper/1:0 [120] R ==> kworker/u4:0:6 [120]
+    kworker/u4:0-6     [001]  3343.176371: sched_wakeup:         sshd:1683 [120] success=1 CPU:001
+    kworker/u4:0-6     [001]  3343.176373: sched_switch:         kworker/u4:0:6 [120] S ==> sshd:1683 [120]
+              ls-2952  [000]  3343.176392: sched_wakeup:         trace-cmd:2949 [120] success=1 CPU:000
+              ls-2952  [000]  3343.176396: sched_switch:         ls:2952 [120] x ==> trace-cmd:2949 [120]
+
+```
+
+
+
+You can also have function timing graph of an event inside given function like 
+
+
+`trace-cmd record -p function_graph -e irq_handler_entry  -l do_IRQ sleep 10` will create a graph for `irq_handler_entry` events called inside `do_IRQ` function.
+
+
+
+
+
+#### Documentation 
+
+- https://www.kernel.org/doc/Documentation/trace/ftrace.txt
+- https://jvns.ca/blog/2017/07/05/linux-tracing-systems/
+- https://elinux.org/images/0/0c/Bird-LS-2009-Measuring-function-duration-with-ftrace.pdf
+- https://static.lwn.net/images/conf/rtlws11/papers/proc/p02.pdf
+- https://lwn.net/Articles/425583/
+
+
+
+
+
+Strace command to know how much time spent in which system call 
+
+```
+$ sudo strace   -c -f find / (you can replace this with PID)
+<OUTPUT of the command>
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+ 40.23    3.557542           6    613413         1 write
+ 22.84    2.019646           4    540898           fcntl
+ 10.68    0.944289           4    238782           close
+ 10.04    0.887954           7    121824           newfstatat
+  9.16    0.809689           7    120312           getdents
+  4.28    0.378801           6     61544           openat
+  2.76    0.244169           4     61556           fstat
+  0.01    0.001220          11       108           brk
+  0.00    0.000020           1        23           mmap
+  0.00    0.000011           6         2           munmap
+  0.00    0.000010           0        24        12 open
+  0.00    0.000009           5         2           fstatfs
+  0.00    0.000006           6         1           futex
+  0.00    0.000000           0        10           read
+  0.00    0.000000           0        14           mprotect
+  0.00    0.000000           0         2           rt_sigaction
+  0.00    0.000000           0         1           rt_sigprocmask
+  0.00    0.000000           0         2           ioctl
+  0.00    0.000000           0         8         8 access
+  0.00    0.000000           0         1           execve
+  0.00    0.000000           0         1           uname
+  0.00    0.000000           0         1           fchdir
+  0.00    0.000000           0         1           getrlimit
+  0.00    0.000000           0         2         2 statfs
+  0.00    0.000000           0         1           arch_prctl
+  0.00    0.000000           0         1           set_tid_address
+  0.00    0.000000           0         1           set_robust_list
+------ ----------- ----------- --------- --------- ----------------
+100.00    8.843366               1758535        23 total
+```
+
+
+
+You can look for errors while doing system calls.
+
+
+
+We have something strace similar tool for manage user space function 
+
+```
+sudo ltrace    -c -f find /
+
+% time     seconds  usecs/call     calls      function
+------ ----------- ----------- --------- --------------------
+ 50.32   42.448145          57    733693 free
+ 49.68   41.906170          57    733690 malloc
+  0.00    0.000074          74         1 realloc
+------ ----------- ----------- --------- --------------------
+100.00   84.354389               1467384 total
+```
+
+
+
+When certain process is not performaning well
+
+- check for CPU utilization, user space or kernel space 
+- if it is kernel space then look for which systemcall is being expensive 
+- Run these tracing only for non-prod process because it does SIGSTOP and SIGCONT to the process 
+
+
+
+# Linux Kernel Perf analysis 
+
+Laymans notes on Brendan Gregg's [perf post](http://www.brendangregg.com/perf.html).
+
+### Installation 
+
+I am using ubuntu based system on which `perf` comes as a part of package, in reality it is a part of [the kernel source](https://github.com/torvalds/linux/tree/master/tools/perf). At some point you will also need kernel debug symbols and kernel source code to be installed on the same host to do some advance experimentation.
+
+- Install `perf`
+
+  ```
+  sudo apt-get install   linux-tools-`uname -r` -y
+  ```
+
+- Install kernel debug symbols on Ubuntu 
+
+  ```
+  echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse
+  deb http://ddebs.ubuntu.com $(lsb_release -cs)-updates main restricted universe multiverse
+  deb http://ddebs.ubuntu.com $(lsb_release -cs)-proposed main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/ddebs.list
+  
+  
+  sudo apt install ubuntu-dbgsym-keyring
+  
+  sudo apt-get update
+  
+  sudo apt-get install linux-image-$(uname -r)-dbgsym
+  ```
+
+- Install kernel source 
+
+  ```
+  # following command should usually work but you might want to do apt-cache search for linux-source and map for the version manually.
+  
+  sudo apt-get install linux-source-$(uname -r)
+  
+  # Kernel source gets dropped in /usr/src/linux-$(version) directory in the form of tar.bz2, you have to extract that source code from where your booted kernel got built.
+  
+  
+  ```
+
+- remove symbol restriction
+
+  ```
+  echo 0 | sudo tee /proc/sys/kernel/kptr_restrict
+  ```
+
+- install BCC tools in the mix 
+
+```
+# ubuntu focal 
+sudo apt-get install -y bpfcc-tools
+
+# other ubuntus 
+
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 4052245BD4284CDD
+echo "deb https://repo.iovisor.org/apt/$(lsb_release -cs) $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/iovisor.list
+sudo apt-get update
+sudo apt-get install bcc-tools libbcc-examples linux-headers-$(uname -r)
+
+
+```
+
+
+### Analysis 
+
+Perf can act  on exported kernel function symbols which you can find in `/proc/kallsyms` and marked with `T` in front of it. Look for `man nm` to understand meaning of that notation.
+
+
+
+Julia Evan's blog post about [tracing](https://jvns.ca/blog/2017/07/05/linux-tracing-systems/) does a good categorization in digramatic fashion about linux tracing systems. There are following type of tracing support 
+
+-  kprobes is mechanism which injects assembly code in its runtime image and allow you to fetch various kinds of data. This is lightwight and can allow you to do production monitoring. You need to do some code reading to create a safe probing mechanism. Looks for simple kprobe injection [script.](https://github.com/brendangregg/perf-tools/blob/master/kernel/kprobe)
+   - kprobe executes `do_init3` which causes SIGTRAP whose handler is setup by kprobe handler function.
+   - There are some performance implication due to the way interrupt handler get executed and needs serialization in this execution through single mutex on SMP systems.
+-  tracepoint is the mechanism where provision for tracing of certain function of kernel is already written and it need to be externally activiated. Here is a [script](https://github.com/brendangregg/perf-tools/blob/master/kernel/functrace) in simialr fashion. In kernel, you can find trace events defined by  `TRACE_EVENT` macro. This also relies on ring buffer size which can be overrrun with too much of data.
+-  uprobe is simialr to kprobes but for userspace functions, especially `malloc()` in libc. There uprobe event [tracing](https://www.kernel.org/doc/html/latest/trace/uprobetracer.html) or another [example](https://opensource.com/article/17/7/dynamic-tracing-linux-user-and-kernel-space)
+-  UDST has something to do with DTrace and userspace probing which I did not explore, apparently this is possible with python and other scripting languages.
+-  LTTNG never even bothered to look up 
+
+
+
+Kernel probing and tracing difference 
+
+- kprobes/uprobes are dynamic and you can extract various values for the function, any function for that matter. 
+- tracers have a static defination on what information they can publish
+
+
+
+
+
+ 
+
+Above mechanisms can be used to collect data by using frameworks like perf, eBPF, ftrace, systemtap with tools like perf, bcc, ftrace, trace-cmd, kernelshark and many more.
+
+
+
+  ### Perf
+
+Perf is a mechansim which relies on system call `perf_event_open` is used to make kernel to write a data in ring buffer and read during this call execution. I am very unclear about the mechanism. You can inject trace, kprobes and uprobes through perf.
+
+
+
+#### Tracing 
+
+Here you can find trace points 
+
+```
+sudo perf list 2>&1 | grep Tracepoint
+```
+
+Here you can trace some of the events 
+
+```
+# list processes which are hitting trace point
+sudo perf trace -e   kmem:kmalloc
+
+# number of counts 
+sudo perf stat -a -e   kmem:kmalloc -I 1000
+```
+
+
+
+Perf is a tool which allows you to sample particualr event and collect realted data while collecting a sample.
+
+The perf_events interface allows two modes to express the sampling period:
+
+- number of occurrences of the event (period)
+- average rate of samples/sec (frequency) - this is a default set to 1000Hz, or 1000 samples/sec
+
+
+
+#### Various types of tracer apart from just functions 
+
+```
+~/sys/kernel/debug/tracing#: cat available_tracers
+blk mmiotrace function_graph wakeup_rt wakeup function nop
+```
+
+- `mmiotrace` - PCIe bus IO map
+- `wakeup_rt` - CPU activity tracing 
+- `blk` - block device tracing
+
+
+
+
+
+#### Probing
+
+This is also refered as Dynamic tracing where you attach a probe to particular kernel funciton 
+
+```
+# kernel probe
+sudo perf probe --add clear_huge_page
+
+# count of a probe got hit
+sudo perf stat -a -e probe:clear_huge_page -I 10000
+
+sudo perf probe --del=probe:clear_huge_page
+
+
+# User probe
+sudo perf probe --exec=/lib/x86_64-linux-gnu/libc.so.6 --add malloc
+
+# print count of malloc calls
+sudo perf stat -a -e probe_libc:malloc -I 10000
+
+# trace system wide malloc 
+sudo perf record -e probe_libc:malloc -a
+sudo perf report -n
+
+
+sudo perf probe --exec=/lib/x86_64-linux-gnu/libc.so.6  --del malloc
+
+```
+
+
+
+Here it get more interesting  where you can probe function definations if you have access to kernel source code on the same host
+
+```
+perf probe -V tcp_sendmsg
+Available variables at tcp_sendmsg
+        @<tcp_sendmsg+0>
+                int     ret
+                size_t  size
+                struct msghdr*  msg
+                struct sock*    sk
+
+# probe for a size param value above  
+sudo perf probe --add 'tcp_sendmsg size’
+sudo perf trace  -e probe:tcp_sendmsg -a  (show you the process and the call to tcp_sendmsg)
+sudo perf probe --del probe:tcp_sendmsg
+
+
+You can also look at the place this symbol has exported 
+
+$  perf probe -L tcp_sendmsg
+<tcp_sendmsg@/build/linux-aws-9iwObr/linux-aws-5.4.0/net/ipv4/tcp.c:0>
+      0  int tcp_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
+      1  {
+      2         int ret;
+
+
+      4         lock_sock(sk);
+      5         ret = tcp_sendmsg_locked(sk, msg, size);
+      6         release_sock(sk);
+
+
+      8         return ret;
+         }
+         EXPORT_SYMBOL(tcp_sendmsg);
+
+```
+
+
+Some interesting commands 
+
+#### CPU cache hit rate 
+
+```
+$ sudo llcstat-bpfcc | egrep -e 'xlinpack|MISS'
+PID      NAME             CPU     REFERENCE         MISS    HIT%
+25368    xlinpack_xeon64  7          723800       446300  38.34%
+25362    xlinpack_xeon64  1          769300       131500  82.91%
+25376    xlinpack_xeon64  15         528600            0 100.00%
+25367    xlinpack_xeon64  6          730600          200  99.97%
+25363    xlinpack_xeon64  2           68400       394800   0.00%
+25364    xlinpack_xeon64  3          773900       145700  81.17%
+25365    xlinpack_xeon64  4         1120900       147500  86.84%
+25373    xlinpack_xeon64  12        1006900          700  99.93%
+25377    xlinpack_xeon64  16         737100            0 100.00%
+25366    xlinpack_xeon64  5           63400       399600   0.00%
+25371    xlinpack_xeon64  10         703600       148400  78.91%
+25372    xlinpack_xeon64  11         657000          500  99.92%
+25374    xlinpack_xeon64  13         632900            0 100.00%
+25369    xlinpack_xeon64  8         1052900         1700  99.84%
+25361    xlinpack_xeon64  18        1339700         1700  99.87%
+25378    xlinpack_xeon64  17         546400            0 100.00%
+25370    xlinpack_xeon64  9          796800       149000  81.30%
+25375    xlinpack_xeon64  14         556000       148300  73.33%
+25376    xlinpack_xeon64  33          35700          100  99.72%
+```
+
+
+
+#### Instructions per cycle 
+
+Simple CPUs can process single instruction per cycle and if it is taking multiple cycles then is blocked on some external resources. Todays multiscalar processors can do more than 1 instruction per cycle.  This can be observed as a part of PMU perf stat 
+
+```
+$ sudo perf stat -C 10   -- sleep 5
+
+ Performance counter stats for 'CPU(s) 10':
+
+           5001.57 msec cpu-clock                 #    1.000 CPUs utilized
+                 2      context-switches          #    0.000 K/sec
+                 0      cpu-migrations            #    0.000 K/sec
+                 0      page-faults               #    0.000 K/sec
+       13579218554      cycles                    #    2.715 GHz
+       32896171252      instructions              #    2.42  insn per cycle
+         246551416      branches                  #   49.295 M/sec
+            367615      branch-misses             #    0.15% of all branches
+
+       5.001763686 seconds time elapsed
+
+```
+
+
+
+Running this stat with NOP cycles, you can find out max this CPU can do 
+
+```
+$ sudo perf stat -ddd ./noploop
+
+ Performance counter stats for './noploop':
+
+       1987.561576      task-clock (msec)         #    1.000 CPUs utilized
+                 2      context-switches          #    0.001 K/sec
+                 0      cpu-migrations            #    0.000 K/sec
+                39      page-faults               #    0.020 K/sec
+     5,037,506,873      cycles                    #    2.535 GHz                      (30.71%)
+    20,043,572,014      instructions              #    3.98  insn per cycle           (38.56%)
+        10,600,102      branches                  #    5.333 M/sec                    (38.76%)
+            31,028      branch-misses             #    0.29% of all branches          (38.82%)
+        21,060,842      L1-dcache-loads           #   10.596 M/sec                    (38.82%)
+            37,500      L1-dcache-load-misses     #    0.18% of all L1-dcache hits    (38.70%)
+             7,415      LLC-loads                 #    0.004 M/sec                    (30.65%)
+             4,361      LLC-load-misses           #   58.81% of all LL-cache hits     (30.59%)
+   <not supported>      L1-icache-loads
+            42,357      L1-icache-load-misses                                         (30.59%)
+        20,842,244      dTLB-loads                #   10.486 M/sec                    (30.59%)
+             1,295      dTLB-load-misses          #    0.01% of all dTLB cache hits   (30.59%)
+               562      iTLB-loads                #    0.283 K/sec                    (30.59%)
+                 0      iTLB-load-misses          #    0.00% of all iTLB cache hits   (30.59%)
+   <not supported>      L1-dcache-prefetches
+   <not supported>      L1-dcache-prefetch-misses
+
+       1.988068021 seconds time elapsed
+```
+
+And then push your processor to achieve that
+
+
+#### Snoop syscall
+
+Here is easy of way to snoop on `open()` syscall in realtime
+
+```
+sudo perf probe --add 'do_sys_open filename:string'
+sudo perf record --no-buffering -e probe:do_sys_open -o - -a | PAGER=cat perf script -i -
+sudo perf probe --del do_sys_open
+```
+
+So here is the `exec()` syscall to monitor small lived processes 
+
+```
+perf probe --add 'do_execve +0(+0(%si)):string +0(+8(%si)):string +0(+16(%si)):string +0(+24(%si)):string'
+perf record --no-buffering -e probe:do_execve -a -o - | PAGER="cat -v" stdbuf -oL perf script -i -
+perf probe --del do_execve
+```
+
+
+
+# Control Groups aka CGroups
+
+What are the containers
+
+Namspace and Cgroups mismash 
+
+
+
+Control Groups provide a mechanism for aggregating/partitioning sets of
+tasks, and all their future children, into hierarchical groups with
+specialized behaviour.
+
+
+
+In CGroupv1 - subsystems has an hierarchy , so each subsystem can have its own hierarchy.
+
+In CGroupv2 - hierarchy get formed first then individual subsystems are attached in the tree.
+
+
+
+Controlling of process is a very old problem, it has been tackled
+
+- Having parent and child process relationship where all children belongs to a parent.
+- TTY terminal based groups based on session ID. This has some limitations.
+- All has a limitation where you can join group but you can not exit group.
+
+
+
+Old resource limiting was with `ulimit` and `setrlimit`  which worked only on individual processes and not on the group.
+
+
+
+Net_CLS and Net_Prio
+
+- `net_prio` get used for a queue selection in the qdisc layer. This priority can be set at the socket level with `SO_PRIORITY` . A new net_prio cgroup inherits the parent's configuration. doc](https://www.kernel.org/doc/Documentation/cgroup-v1/net_prio.txt)
+- `net_cl` marks the packet with the id which can be used in traffic shaping with `tc` and `iptables`  . This class id is attached to each network packet. There is some issue with the inheritance of these marking in the child cgourp which is I am unclear of. [doc](https://www.kernel.org/doc/Documentation/cgroup-v1/net_cls.txt)
+
+
+
+
+
+Devices cgroup
+
+- permissions for read/write to particualr device by the process and its children 
+- /dev/random - fed with entrophy  in linux 
+- /dev/net/tune - /dev/kvm and /dev/dri 
+
+
+
+Freeze cgroup
+
+This is a little bit like sending `SIGSTOP` or `SIGCONT` to one of the process groups. 
+
+Freezing is arranged by sending a **virtual signal to each process**, since the signal handling code does check if the cgroup has been marked as frozen and acts accordingly. In order to make sure that no process escapes the freeze, **freezer requests notification** when a process forks, so it can catch newly created processes — it is the only subsystem that does this.
+
+
+
+`cgroup_is_descendant` function which simply walks up the` ->parent` links until it finds a match or the root. Networking subsystem do not use this function for performance reason.
+
+
+
+### CPU
+
+#### CPUset cgroup 
+
+This allows you to create CPU and memory grouping based on its NUMA topology. This avoids bouncing of pages and other stuff.
+
+Here are key files
+
+```
+/sys/fs/cgroup/cpuset/cpuset.cpus
+/sys/fs/cgroup/cpuset/cpuset.mems
+/sys/fs/cgroup/cpuset/cgroup.procs
+/sys/fs/cgroup/cpuset/tasks
+
+
+# create a new set
+sudo mkdir /sys/fs/cgroup/cpuset/set1
+```
+
+Populate values in the new set directory to attach process to that set.
+
+
+#### CPUacct 
+
+Accounting purpose.
+
+```
+ls /sys/fs/cgroup/cpuacct/
+mkdir /sys/fs/cgroup/cpuacct/set1
+# add process in this set
+```
+
+#### CPU
+
+`struct sched_entity` keeps a track of scheduling information by proportional weights and virtul runtime. Cloning of this scheduling structure hierarchy is refered by `res_counter` to keep the track of every processes runtime without locking.
+
+This strucutre then get used to put a quota on group's runtime.
+
+Quota restrictions are often pushed down the hierarchy while accounting data is often propagated up a parallel hierarchy.
+
+
+### Memory 
+
+- For record keeping on various resources, kernel uses `res_counter` declared in  `include/linux/res_counter.h` and implemented in `kernel/res_counter.c`. 
+
+- In case of memory there are four counters, three for userspace and kernel space, sum of total memory + swap usage. For `hugetlb` there is a single counter tracking huge pages.
+
+- `res_counter` uses spinlock to manage concurrency and every process will have pointer to its parent's strucutre. When update happens you have to take a spinlock which is expensive. So spinlock guarded counter gets updated by 32 pages and excess quota gets tracked.
+
+
+
+### BlockIO
+
+- `blockio` alllows to apply various scheduling policies like `throttle` and `cfq-iosched`.
+- it uses non-reusable internal 64bit for various tracking `blkcg` along with its container ID.
+
+this cgroup can
+
+- throttle bytes per second ``
+- follow weight of device `blkio.weight*`
+- allocate disk time `blkio.time`
+- quota on sectors `blkio.sectors`
+- quota on various timings `blkio.io_service_time`, `blkio.io_wait_time` and many other timings.
+
+
+
+### Other notes on CGroups
+
+- `systemd` creates in own process hierarchy under `/sys/fs/cgroup/systemd`
+- there is the one unified hierarchy on the system with all cgroups.\
+- `net_cl` just mark the packets but their administrative control managed by `tc` 
+- but here is a problem, if memory page `mmapped` then modified and flushed to the disk. It generates memory IO and Block IO in two different contexts. Which part of cgroup this should get accounted to what granularity.
+- cgroups are groups of threads, rather than groups of processes. This means that when a process is added to a cgroup, each individual thread must be added separately, and it is necessary to keep the list of threads stable while they are being removed from one cgroup and added to another.
+- Each thread's cgroup is defined by `struct css_set` and these cgroups are matchined to different hierarchy through a hash table. This was threads or process can move around between cgroups. `cgrp_cset_link` is the hashtable which keeps track of all cgroups to its hierarchy.
+- cgroupv2 has unified hierarchy which encapsualte all the cgroups underneath.  CGroup controllers are getting used to apply policies to the trees of cgroups.
+
+
+
+
+
+Use of cgroup
+
+- you can slice a machine resources with the cgroup.
+- cgroupv2 provides unified hierarchy where resource comes under tree of the cgroup and applied with `subtree_contol` file.
+- [Presentation](https://chrisdown.name/talks/cgroupv2/cgroupv2-fosdem.pdf) which compares cgroupv1 to v2
+
+
+
+
+
+
+
+
+Control Groups - 
+
+- meatring 
+- group CPUs
+- crowd control 
+
+
+
+Each subsystem has its own hirarchy 
+
+each process is part of different cgroups hierarchy 
+
+whole system is a cgroups 
+
+
+
+Memory cgroup : account 
+
+- memory page granularity 
+- file backed and anon pages 
+- active and inactive memory 
+- each page charged to one cgroup - sharing page and charging has discrepency 
+- soft and hard limit - limits physical, total and kernel memory 
+- notification - oom-notiifcation - freeze cgroup and let program deal with it
+- there are some overheads for managing memory pages 
+
+
+
+HugeTLB cgroup 
+
+- process can be gridy to use huge pages 
+
+
+
+CPU cgroups 
+
+- allows track CPU usage in terms of time.  Per CPU track 
+- Allows you to set weights - what are those weight?
+- you can not set limit 
+
+
+
+
+
+BlockIO
+
+- keeps track of IO for each group
+- read and write , sync and async IO
+- throtlles 
+
+
+
 - 
+
+
+
+Freezer cgroup 
+
+- sigSTOP 
+- freeze entire container 
+- move the container and unfreeze it 
+
+
+
+Subtles
+
+- top cgroup by systemd
+- top level control 
+
+
+
+
+
+# [Namespace](https://lwn.net/Articles/531114/) 
+
+The purpose of each namespace is to wrap a particular global system resource in an abstraction that makes it appear to the processes within the namespace that they have their own isolated instance of the global resource. It provides a group of processes with the illusion that they are the only processes on the system.
+
+
+
+each process in one namespace of each kind  (similar to cgroup)
+
+MNT NS `mnt_namespace`
+
+- mount of file system 
+- each user has /tmp
+- `CLONE_NEWNS`
+
+
+
+`unshare()` system call which allows calling process to be a part of the namespace.
+
+
+
+`setns()`  this disaasoaciates one namespace to get attached to another namespace.
+
+
+
+`struct nsproxy` in the `struct task_struct` holds information about process's namespaces. The pid namespace is an exception -- it's accessed using `task_active_pid_ns`.  The pid namespace here is the namespace that tasks's children will use. `/include/linux/nsproxy.h` for more code reading.
+
+
+
+
+
+
+
+
+
+How mount works
+
+- mount does check user permission who called the comand 
+- kernel check if you have implementation for given filesystem on the device
+- VFS abstracted call for that file system will get called `mount_bdev`
+- superblock structure get created in memory by VFS. Fill in superblock structure by calling filesystem related functions.
+- The specific filesystem fills the in-memory superblock with all the relevant information in disk (e.g., blocksize, what capabilities are available, check for corruption, etc..). Most of the times the in-memory superblock is very similar to the one in disk.
+
+
+
+
+
+Various mount NS [use cases](https://www.ibm.com/developerworks/linux/library/l-mount-namespaces/index.html)
+
+- per user mount
+- mount sharing
+
+
+
+
+
+
+
+UTS NS `uts_namespace`
+
+- own hostname
+- `CLONE_NEWUTS`
+
+
+
+
+
+IPC NS `ipc_namespace`
+
+- semaphore , shared memory and message queue
+- `CLONE_NEWIPC`
+
+
+
+PID NS `pid_namespace` `task_active_pid_ns` `CLONE_NEWPID`
+
+- restrict PID
+- One of the main benefits of PID namespaces is that containers can be migrated between hosts while keeping the same process IDs for the processes inside the container. 
+- From the point of view of a particular PID namespace instance, a process has two PIDs: the PID inside the namespace, and the PID outside the namespace on the host system. PID namespaces can be nested: a process will have one PID for each of the layers of the hierarchy starting from the PID namespace in which it resides through to the root PID namespace. 
+
+
+
+
+
+Network NS `CLONE_NEWNET`
+
+- own Localhost
+- iptables , routing rable , sockets 
+- you can move network interface 
+- various functions does skb mapping to particualr device namespace.
+- `possible_net_t	 nd_net` in the `net_device` holds the namespace for that device.
+- Usually network namespaces are managed by virutal network interface which present inside and outside of the container environment.
+- physical hardware remains in the root namespace.
+
+
+
+
+
+User namsespace `CLONE_NEWUSER`
+
+- UID and GID namespace map 
+- usable security 
+- root inside the namespace
+
+
+
+Namespace manipulation 
+
+- clone() accept flag for NS 
+- bind mount 
+
+
+
+Copy-on-Write storage 
+
+- layered file system 
+- docker storage drivers 
+
+
+
+SELinux/AppArmor inside docker 
+
+what is [CAP_SYS_ADMIN](https://lwn.net/Articles/486306/)  
+
+
+
+Container runtimes 
+
+- LXC 
+- Systemd-nspawn
+- docker 
+- runC - stripped down docker - uses libcontainer - just to start - live migration 
+
+
+
+No depneds on NS and Cgroup
+
+- OpenVZ - actively maitained 
+- Jails and zones - bsd and solaris 
+
+
+
+
+
+
+
+
+
+
 
 
 
