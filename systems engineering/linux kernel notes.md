@@ -77,7 +77,7 @@ struct task_struct {
 
 
 Rough diagramatic representation on how kernel space proc scheduling happens 
-![linux_prod_sched](/Users/abhisawa/git/lc-practice/tech_notes/images/linux_proc_sched.png)
+![linux_prod_sched](../images/linux_proc_sched.png)
 
 
 
@@ -220,21 +220,21 @@ Preemption of the task can only happen when it is not holding any locks and kern
 Various digramatic notes about memory 
 
 
-![vm_watermark](/Users/abhisawa/git/lc-practice/tech_notes/images/vm_watermarks.png)
+![vm_watermark](../images/vm_watermarks.png)
 
 
 
 Here is a white boarding session where how linux kernel maps its physical pages to various data structures.
-![kernel_datastruct](/Users/abhisawa/git/lc-practice/tech_notes/images/phy_mem_to_vm_mem_mapping.png)
+![kernel_datastruct](../images/phy_mem_to_vm_mem_mapping.png)
 
 And here is mapping of VM process space to physical space
-![proc_vm_to_phy](/Users/abhisawa/git/lc-practice/tech_notes/images/phy_mem_to_vm_mem_mapping_2.png)
+![proc_vm_to_phy](../images/phy_mem_to_vm_mem_mapping_2.png)
 
 Linux memory page life cycle is defined in following diagram 
-![page_life_cycle](/Users/abhisawa/git/lc-practice/tech_notes/images/linux_mem_page_lifecycle.png)
+![page_life_cycle](../images/linux_mem_page_lifecycle.png)
 
 Above digram in certain extent explained in following white boarding session 
-![page_life_cycle_explained](/Users/abhisawa/git/lc-practice/tech_notes/images/page_lifecycle_explained.png)
+![page_life_cycle_explained](../images/page_lifecycle_explained.png)
 
 ## 
 
@@ -576,7 +576,7 @@ $ ps ax |grep kthreadd | grep -v grep
 - this mode also supports segmentation and paging. Previously memory segments were 64KB size but in protected mode they are different. 
 - In protected mode size and location of each segment descriebd by data structure `Segment Descriptor` which is 64-bit in size. These segment descritors are stored in a data structure called the `Global Descriptor Table (GDT)`.
 - GDT addressed stored in CPU 48 bit register called GDTR and can be retrived by `lgdt gdt` instruction. 
-- ![img](SRE/assets/gdt_and_ldt_mapping.png)
+- ![img](../images/gdt_and_ldt_mapping.png)
 
 Index can come from either GDT or LDT. GDT is to store kernel related addresses and LDT is created for each process. 
 
@@ -585,7 +585,7 @@ GDT or LDT plus offset will give you physical location of the memory.
 
 
 
-![img](SRE/assets/segment_selector.png)
+![img](../images/segment_selector.png)
 
 checkout Privillage level in RPL
 
@@ -653,7 +653,7 @@ checkout Privillage level in RPL
   - Enable paging ( just for 4G memory )
 
 - Linux addresses – Virtual address to linear address to physical address
-  ![img](SRE/assets/virtual_linear_physical_addresses.png)
+  ![img](../images/virtual_linear_physical_addresses.png)
 
   - ***Virtual addresses\*** are used by an application program. They consist of a 16-bit selector and a 32-bit offset. In the flat memory model, the selectors are preloaded into segment registers CS, DS, SS, and ES, which all refer to the same linear address. They need not be considered by the application. Addresses are simply 32-bit near pointers.
   - ***Linear addresses\*** are calculated from virtual addresses by segment translation. The base of the segment referred to by the selector is added to the virtual offset, giving a 32-bit linear address. Under RTTarget-32, virtual offsets are equal to linear addresses since the base of all code and data segments is 0.
@@ -673,7 +673,7 @@ checkout Privillage level in RPL
 
 
 
-![4-level paging](/Users/abhsawan/git/tech_notes/images/4_level_paging.png)
+![4-level paging](../images/4_level_paging.png)
 
 
 
@@ -1499,7 +1499,7 @@ After all of these checks, this function
 
 
 
-![image of the callgraph for all the routines involved in program startup on linux](images/callgraph_binary_execution.png)
+![image of the callgraph for all the routines involved in program startup on linux](../images/callgraph_binary_execution.png)
 
 
 
@@ -1602,7 +1602,7 @@ And refer this [link](https://0xax.gitbooks.io/linux-insides/content/Misc/linux-
 
 - As we know `__START_KERNEL_map` is a base virtual address of the kernel text, so if we subtract `__START_KERNEL_map`, we will get physical addresses of the `level2_kernel_pgt` and `level2_fixmap_pgt`.
 
-- ![Kernel_Fix_Add_map](images/Kernel_Fix_Add_map.jpg)
+- ![Kernel_Fix_Add_map](../images/Kernel_Fix_Add_map.jpg)
 
 
 
@@ -1811,7 +1811,7 @@ IO-APIC get used for hardware interrupts.
 
 Understanding extracted from Neil Brown's LWN [article](https://lwn.net/Articles/736534/) 
 
-![[Block layer diagram]](/Users/abhsawan/git/tech_notes/images/lwn-neil-blocklayer.png)
+![[Block layer diagram]](../images/lwn-neil-blocklayer.png)
 
 - Block devices maps to `S_IFBLK` inodes in the kernel which keeps track of major and minor numbers. Internally `i_bdev` field in the inode is mapped to [`struct block_device`](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/fs.h?h=v4.13#n415) which maps to `block_device->bd_inode` which involved in actually IO of the device. 
   (what other type of inodes are there and what about network socket inodes?)
