@@ -58,6 +58,17 @@ Tech steps
 - Create a control path from the box to the cloud so we can provide
    - ability update/delete data through UI.
    - Other infromation and health statistics of the box.
+   - We can update software if needed? this is a bit tricky.
+
+
+
+Capacity calculation and architecture
+
+- How much disk space and RAID-5 or RAID-10 if we need performance.
+- API design for the upload and download 
+- Authetication mechanism for the data transfer 
+
+
 
 
 
