@@ -1961,6 +1961,15 @@ Deduction about queuing theory, [article](https://blog.mi.hdm-stuttgart.de/index
   Q = U^2/1-U
   ```
 
+- Residence time 
+
+  ```
+  # Xs will be number of threads
+  Rt = St / (1-U^Xs)
+  
+  But I decided to divide arrival rate by number of availble threads and keep all other numbers the same.
+  ```
+
   
 
 # Kernel Tracing

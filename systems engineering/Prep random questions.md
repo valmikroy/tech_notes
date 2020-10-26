@@ -9,7 +9,7 @@
 - `sudo ss -m --info` will provide you memory consumption of the socket.
 - TLB usage here the **P** is divided in x86 architecture into multiple levels of PGD (page global dir), PUD (page upper dir), PMD (page middle dir) and lowest leve in PTE. This **PTE** is mapped to **Frame number** in TLB, if it is missed then it have to crawl through entire directory structure.  TLB flushing is initiated by OS 
 
-![Translation_Lookaside_Buffer](https://upload.wikimedia.org/wikipedia/commons/6/6e/Translation_Lookaside_Buffer.png)
+![Translation_Lookaside_Buffer](../images/Translation_Lookaside_Buffer.png)
 
 - TLB flushing can be avoided by reducing size of the page table (especially PGD) entries by using huge pages.
 
@@ -132,7 +132,7 @@
     
   - Inside CPUure 3.2. Inside the CPU
   
-    ![img](images/inside_CPU.png)
+    ![img](../images/inside_CPU.png)
   - To occupy all the above CPU components to raise efficiency, it uses pipelining. Sometimes pipeline can get flushed if branch predication fails. This is parallelized execution of various blocks called superscalar architecture.
   - Sorting of the data reduces branch predictions.
   - RISC has single instruction doing simple things vs CISC has single instruction doing multiple things. RISC compiler who generates code need to be smarter at the same time chip design for RISC becomes much simpler.
@@ -147,7 +147,7 @@ The reason caches are effective is because computer code generally exhibits two 
 
 **Cache replacement strategy** 
 
-![img](images/Memory_Caching_Strategy.png)
+![img](../images/Memory_Caching_Strategy.png)
 
 - Direct - only one place to place memory block, this forces other block in the same slot to be replaced.
 - 4 - Way set associative - 4 possible places for given memory block, whichever is free can be utilized without eviction.
@@ -174,15 +174,15 @@ The reason caches are effective is because computer code generally exhibits two 
 - `ls` command shows modification time in the output.
 - `read` returns `0` for any holed area in the file.
 - Files 
-  ![img](images/files_block_struct.png)
+  ![img](../images/files_block_struct.png)
 - Dirs
-  ![img](images/Dir_block_structure.png)
+  ![img](../images/Dir_block_structure.png)
 
 - Hard links to dir will cause loops
 
 - Following symlink is an atomic operation - that is the reason we used it in our deployment mechanism. How it can be used for deployments? https://temochka.com/blog/posts/2017/02/17/atomic-symlinks.html
 
-- each entry in dir has a fix size so it grows baed of number of entries in it.
+- each entry in dir has a fix size so it grows based of number of entries in it.
 
 - Stream IO with multiple byte read for each charater which is getting used for Unicodes.
 
@@ -214,7 +214,7 @@ The reason caches are effective is because computer code generally exhibits two 
   - Each file table entry gets created upon creation of new File Descriptor. 
   - `fork()` and `dup()` will point to same file table entry through different file descriptors.
 
-  ![linux-file-description](images/linux-file-description.png)
+  ![linux-file-description](../images/linux-file-description.png)
 
 - [Standard IO library functions](https://en.wikipedia.org/wiki/C_file_input/output) which abstract underlying POSIX related details of the OS.
 
@@ -224,16 +224,16 @@ The reason caches are effective is because computer code generally exhibits two 
 
 - Environment variable is and pointer to the pointers
 
-  ![Figure 7.5 Environment consisting of five C character strings](images/process_env_vars.png)
+  ![Figure 7.5 Environment consisting of five C character strings](../images/process_env_vars.png)
 
 `NULL` pointer below is to extend that variable list. Initial pointer is stored on top of the stack.
 
-![Figure 7.5 Environment consisting of five C character strings](images/process_env_var_stored.png)
+![Figure 7.5 Environment consisting of five C character strings](../images/process_env_var_stored.png)
 
 
 
 More accurate representation considering kernel space is here
-![proc_kern_virt_mem_map](images/proc_kern_virt_mem_map.png)
+![proc_kern_virt_mem_map](../images/proc_kern_virt_mem_map.png)
 
 
 
@@ -250,7 +250,7 @@ More accurate representation considering kernel space is here
 - Hash  `#`  has to be universal line commenter for every interprater language because the way `exec()` calls  processes shebang.
 
 - Shell session 
-  ![Figure 9.9 Summary of job control features with foreground and background jobs, and terminal driver](images/Process_control_shell_session.png)
+  ![Figure 9.9 Summary of job control features with foreground and background jobs, and terminal driver](../images/Process_control_shell_session.png)
 
 - summarize `nohup`, `disown` and `&`:
   
@@ -291,7 +291,7 @@ More accurate representation considering kernel space is here
   ss -tni
   ```
 
-  ![Image for post](images/TCP+BBR+compare.png)
+  ![Image for post](../images/TCP+BBR+compare.png)
 
 - Blocked process in `vmstat` output are the one waiting on blocked IO and running or runnable process are shown in the other column. It is coming from `/proc/stats` populated [here](https://github.com/torvalds/linux/blob/63bef48fd6c9d3f1ba4f0e23b4da1e007db6a3c0/fs/proc/stat.c#L201)
 
@@ -441,7 +441,7 @@ More accurate representation considering kernel space is here
 
   ***Linux Entropy Lifecycle***
 
-  ![User-added image](images/linux_entropy.png)
+  ![User-added image](../images/linux_entropy.png)
   
  - Linux Network Traffic Control
     - The NTC mechanism is managed by the tc program. This tool allows a "queueing discipline" (or "qdisc") to be attached to each network interface. Some qdiscs are "classful" and these can have other qdiscs attached beneath them, one for each "class" of packet. If any of these secondary qdiscs are also classful, a further level is possible, and so on. 
@@ -487,13 +487,17 @@ More accurate representation considering kernel space is here
         - `target` - this is logical grouping of various units which can define internel depedencies
         - `snapshot` - this is for rollbacks and emergency shell creation.
 
-        ![image-20201024140658320](images/systemd_daemon_arch.png)
+        ![image-20201024140658320](../images/systemd_daemon_arch.png)
 
 
+
+- Cgroup allocates CPU based on the ratio of `cpu.share` number. If you have 32 CPU cores and if you want to allocate 10 of them to your application then `cpu.share` math will come as `(10/32)*1024 = 320`. 1024 is a standard slice representing all the CPU resources.
+- Server racks 42U and half height comes with 22U rack and they come with 7KWatts power. Usually each server can consume 350Watts (210W for CPU alone). 20 Units of such 1U server can fit in half length rack.
+- `select` and `poll` always loop through all FDs and `epoll` is event driven so process gets a signal on the event of FD being ready.
 
 ### Linux kernel packet traverse    
 
-![linux_kernel_nw_traverse](/Users/abhisawa/git/lc-practice/tech_notes/images/linux_kernel_nw_traverse.jpg)
+![linux_kernel_nw_traverse](../images/linux_kernel_nw_traverse.jpg)
 
 
 
@@ -508,6 +512,12 @@ More accurate representation considering kernel space is here
 TLS performace [compare by Intel](https://software.intel.com/content/www/us/en/develop/articles/improving-openssl-performance.html)
 
 Kernel level TLS performance aka [ktls](https://www.kernel.org/doc/html/latest/networking/tls-offload.html)
+
+
+
+TLS handshake 2RTT on top of 1RTT for TCP handshake 
+
+![TLS_Handshake_Timing](../images/TLS_Handshake_Timing.png)
 
 
 
@@ -598,7 +608,7 @@ Disable PCIe power management
 pcie_aspm=off
 ```
 
-![img](/Users/abhisawa/git/lc-practice/tech_notes/images/pcie-table.png)source: https://en.wikipedia.org/wiki/PCI_Express#History_and_revisions
+![img](../images/pcie-table.png)source: https://en.wikipedia.org/wiki/PCI_Express#History_and_revisions
 
 [PCIe tunig guide](https://community.mellanox.com/docs/DOC-2496)
 
@@ -655,7 +665,7 @@ Tune RSS and RFS (needs CPU affinity)
 
 ##### TCP tunes
 
-![img](/Users/abhisawa/git/lc-practice/tech_notes/images/linux-tcp-stack.png)
+![img](../images/linux-tcp-stack.png)
 
 
 
@@ -716,7 +726,7 @@ Tunings mentioned in this part will affect both performance and security of your
 - OSCP stapling 
 - TLS record size 
 
-![TLS_record_size](/Users/abhisawa/git/lc-practice/tech_notes/images/TLS_record_size.jpg)
+![TLS_record_size](../images/TLS_record_size.jpg)
 
 
 
@@ -1010,6 +1020,10 @@ kbstack - stack structure in kernel
 Kbpgtbl - kernel page table size 
 
 Kbnonpg - Amount of non-file backed pages in kilobytes mapped into userspace page tables. 
+
+
+
+
 
 
 
