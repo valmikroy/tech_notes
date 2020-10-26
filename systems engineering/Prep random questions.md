@@ -494,6 +494,7 @@ More accurate representation considering kernel space is here
 - Cgroup allocates CPU based on the ratio of `cpu.share` number. If you have 32 CPU cores and if you want to allocate 10 of them to your application then `cpu.share` math will come as `(10/32)*1024 = 320`. 1024 is a standard slice representing all the CPU resources.
 - Server racks 42U and half height comes with 22U rack and they come with 7KWatts power. Usually each server can consume 350Watts (210W for CPU alone). 20 Units of such 1U server can fit in half length rack.
 - `select` and `poll` always loop through all FDs and `epoll` is event driven so process gets a signal on the event of FD being ready.
+- Unlike the Tracepoint based event, Kprobe can be added and removed dynamically, on the fly.  It can probe wherever kprobes can probe (this means, all functions except those with `__kprobes/nokprobe_inline` annotation and those marked `NOKPROBE_SYMBOL`). 
 
 ### Linux kernel packet traverse    
 
