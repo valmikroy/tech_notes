@@ -5,7 +5,7 @@
 
 ## Network
 Before exploring each network protocols, make sure that you remember these basic OSI layers
-![os_model](images/network_OS_layers.png)
+![os_model](../images/network_OS_layers.png)
 
 
 Network connection handling is done by following system calls
@@ -90,7 +90,7 @@ This section also combines notes from TCP/IP illustrated
 - DNS does various kind of caching which can be controlled with TTL, it can also do negative caching means caching of the unsuccessful FQDN resolution. Some of the local caching services like NSCD (nssswitch.conf) can be used to improve performance.
 
 Here are two DNS query types
-![DNS query types](images/dns_query_types.png)
+![DNS query types](../images/dns_query_types.png)
 
 
 
@@ -121,7 +121,7 @@ Here are two DNS query types
 
 ### TCP 
 TCP in the nutshell is displayed in this crude whiteboarding 
-![TCP in nutshell](images/TCP_in_nutshell.png)
+![TCP in nutshell](../images/TCP_in_nutshell.png)
 
 - TCP connection establishment 
   - 3-way handshake SYN , ACK+SYN, ACK  and closing sequence FIN, ACK, FIN, ACK
@@ -141,7 +141,7 @@ Here are various TCP options
 TCP does path MTU discovery based on ICMP reponse like "Destination Unreachable" (Fragmentation Required) message. 
 
 Here is TCP state diagram 
-![TCP states](images/TCP_state_diagram.png)
+![TCP states](../images/TCP_state_diagram.png)
 
 
 TIME_WAIT state 
@@ -228,7 +228,7 @@ All above is based on the simple TCP implementation and it gets more complicated
 
 -  UDP-lite is something which provides you flexibility of having checksum for the limited are of the packet header.
 
-- IP determines the need for the fragmentation based on availbile information of the path towards destination. IP starts a timer on the arrival of first fragment to assemble packet within that time. ![UDP fragmentation](images/UDP_IPv4_fragmentation.png)
+- IP determines the need for the fragmentation based on availbile information of the path towards destination. IP starts a timer on the arrival of first fragment to assemble packet within that time. ![UDP fragmentation](../images/UDP_IPv4_fragmentation.png)
 
 - UDP application has to do PMTU discovery by using ICMP to avoid fragmentation. Maximum size of UDP is limited by max IPv4 packet size which is 16bit (65,535 bytes) (same for TCP).
 
@@ -269,5 +269,5 @@ All above is based on the simple TCP implementation and it gets more complicated
   
 ### IP
 
-![IP Packet](images/IP_packet.png)
+![IP Packet](../images/IP_packet.png)
 
