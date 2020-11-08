@@ -106,6 +106,8 @@
     - CONFIG_LEGACY_VSYSCALL_NATIVE. - dangerous one - the vsyscall page contains native machine code that just calls the respective time()/getcpu()/… system calls and can be directly executed from a process.
     - CONFIG_LEGACY_VSYSCALL_EMULATE - generates page fault to move to kernel space - which will execute the page fault handler and then emulate the system call on behalf of the process, rather than letting it execute native machine code from the *vsyscall* page itself. 
     - CONFIG_LEGACY_VSYSCALL_NONE - calling process is sent a *SIGSEGV* signal
+    
+- Most of the system calls in linux on x86_64 are now implemented via MSR registers which avoid triggering `int 80`. For even faster execution of vDSOs, there are memory pages from kernel space get mapped into userspace for faster access.
   
 - Pipes 
   - They are the connectors where output of a process passes through kernel space buffer and fed into another process.
