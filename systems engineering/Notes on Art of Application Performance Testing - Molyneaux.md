@@ -101,3 +101,51 @@ Various test design
 
 
 
+### Ch3 : Process of performance testing 
+
+This chapter highlights broader steps in which performance test process should implemented
+
+- Pre-Engagement requirements capture
+- Test enviornment build
+- Transactions scripting 
+- Performance test build
+- Performance test excution 
+- Post test, analyze results, report and retest
+
+
+
+### Ch4: Effective RCA 
+
+Statistical meaning 
+
+- Standard distribution - median and standard deviation 
+  ![Standard_deviation_diagram](https://upload.wikimedia.org/wikipedia/commons/8/8c/Standard_deviation_diagram.svg)
+
+- Nth percetile 
+- Response time or latency distribution - histogram 
+
+Defination of load and what point of the load various KPIs started drifting into undesirable region.
+
+
+
+- Application KPIs
+- System resource KPIs
+- Load generator progression 
+
+
+
+Load test
+
+- Increase load (with its defination)
+- Select a KPI which shows the knee in its metrics numbers which is the indicator of the capacity maxing out.
+- Overlay various metrics  including systems metrics to find out why that happened.
+- Tune and rerun the tests again.
+
+
+
+
+
+
+
+
+
