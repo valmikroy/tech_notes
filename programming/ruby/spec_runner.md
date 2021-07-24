@@ -5,6 +5,8 @@ how we can modify rspec test output.
 
 ## To run spec file
 
+Following snippet provides the way to invoke spec file through Ruby code.
+
 ```ruby
 require 'rspec'
 
@@ -23,6 +25,11 @@ RSpec::Core::Runner.run(['rspec_example_spec.rb'])
 
 RSpec.clear_examples
 ```
+
+Rspec retains state of all the test runs until it exists out of the context
+which is a problem if you run above code in the loop with the different
+arguments. You need to call `RSpec.clear_examples` to reset the examples output
+state.
 
 ## Modify output format
 
@@ -65,3 +72,7 @@ class MyOwnFormatter
   end
 end
 ```
+
+To use custom formatter update the Rspec configuration with
+`c.add_formatter(MyOwnFormatter)`.
+
